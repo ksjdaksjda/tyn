@@ -1,36 +1,40 @@
-// Test endpoint — probes agedm.io API patterns and returns raw responses
+// Round 2: Try more API patterns
 export const onRequestGet = async () => {
   const q = '辉夜大小姐'
   const results: any[] = []
+  const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://m.agedm.io/', 'Accept': 'application/json' }
 
-  // Pattern 1: /api/search
-  try {
-    const r = await fetch(`https://m.agedm.io/api/search?keyword=${encodeURIComponent(q)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://m.agedm.io/', 'Accept': 'application/json' }
-    })
-    const d = await r.text()
-    results.push({ pattern: '/api/search', status: r.status, type: r.headers.get('content-type'), body: d.slice(0, 300) })
-  } catch (e: any) { results.push({ pattern: '/api/search', error: e.message }) }
+  const patterns = [
+    `/api/v1/search?keyword=`, `/api/v2/search?keyword=`, `/api/anime/search?keyword=`,
+    `/api/anime/list?keyword=`, `/api/search/list?keyword=`, `/api/resource/search?keyword=`,
+  ]
+  for (const p of patterns) {
+    try {
+      const r = await fetch(`https://m.agedm.io${p}${encodeURIComponent(q)}`, { headers })
+      results.push({ pattern: p, status: r.status })
+      if (r.status === 200) {
+        const d = await r.text()
+        results[results.length-1].body = d.slice(0, 500)
+      }
+    } catch (e: any) { results.push({ pattern: p, error: e.message }) }
+  }
 
-  // Pattern 2: /search
+  // Try POST search
   try {
-    const r = await fetch(`https://m.agedm.io/search?keyword=${encodeURIComponent(q)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://m.agedm.io/' }
+    const r = await fetch('https://m.agedm.io/api/search', {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword: q })
     })
-    const d = await r.text()
-    results.push({ pattern: '/search', status: r.status, type: r.headers.get('content-type'), body: d.slice(0, 300) })
-  } catch (e: any) { results.push({ pattern: '/search', error: e.message }) }
+    results.push({ pattern: 'POST /api/search', status: r.status, body: (await r.text()).slice(0, 300) })
+  } catch (e: any) { results.push({ pattern: 'POST /api/search', error: e.message }) }
 
-  // Pattern 3: Just the homepage to see what framework it uses
+  // Try scraping the homepage for JS bundle URLs that might reveal the API
   try {
-    const r = await fetch('https://m.agedm.io/', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    })
+    const r = await fetch('https://m.agedm.io/', { headers: { 'User-Agent': 'Mozilla/5.0' } })
     const html = await r.text()
-    // Extract API hints from HTML
-    const apiHints = html.match(/(?:api|search|keyword)[^"'\s]*/gi) || []
-    results.push({ pattern: 'homepage', status: r.status, apiHints: [...new Set(apiHints)].slice(0, 20), body: html.slice(0, 200) })
-  } catch (e: any) { results.push({ pattern: 'homepage', error: e.message }) }
+    const jsFiles = html.match(/src="([^"]+\.js[^"]*)"/g) || []
+    results.push({ pattern: 'JS files', files: jsFiles.slice(0, 10) })
+  } catch (e: any) {}
 
   return new Response(JSON.stringify(results, null, 2), {
     headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
