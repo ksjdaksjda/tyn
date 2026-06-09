@@ -2,21 +2,19 @@
 // Migrated from original [[path]].js
 
 const UPSTREAM = 'https://moontv.022340618.xyz'
-const USERNAME = 'sond'
-const PASSWORD = '123456'
 
-let sessionCookie = ''
-
-async function ensureLogin(): Promise<string> {
+async function ensureLogin(env: any): Promise<string> {
+  const sessionCookie = (env as any).__sessionCookie || ''
   if (sessionCookie) return sessionCookie
 
   const res = await fetch(`${UPSTREAM}/api/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: USERNAME, password: PASSWORD }),
+    body: JSON.stringify({ username: env.MOONTV_USER || '', password: env.MOONTV_PASS || '' }),
   })
-  sessionCookie = res.headers.get('set-cookie') || ''
-  return sessionCookie
+  const cookie = res.headers.get('set-cookie') || ''
+  ;(env as any).__sessionCookie = cookie
+  return cookie
 }
 
 export const onRequestGet = async (context: any) => {
@@ -28,7 +26,7 @@ export const onRequestGet = async (context: any) => {
     return new Response('Missing url parameter', { status: 400 })
   }
 
-  const cookie = await ensureLogin()
+  const cookie = await ensureLogin(context.env)
 
   const res = await fetch(targetUrl, {
     headers: {
@@ -39,8 +37,8 @@ export const onRequestGet = async (context: any) => {
   })
 
   if (res.status === 401) {
-    sessionCookie = ''
-    const newCookie = await ensureLogin()
+    context.env.__sessionCookie = ''
+    const newCookie = await ensureLogin(context.env)
     const retryRes = await fetch(targetUrl, {
       headers: { Cookie: newCookie, Referer: UPSTREAM, 'User-Agent': 'Mozilla/5.0' },
     })

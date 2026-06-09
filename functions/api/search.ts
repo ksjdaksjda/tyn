@@ -43,10 +43,12 @@ export const onRequestGet = async (context: any) => {
     // Video source search (moontv)
     if (type === 'all' || type === 'movie' || type === 'tv') {
       try {
+        const upUser = env.MOONTV_USER || ''
+        const upPass = env.MOONTV_PASS || ''
         const loginRes = await fetch('https://moontv.022340618.xyz/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: 'sond', password: '123456' })
+          body: JSON.stringify({ username: upUser, password: upPass })
         })
         const cookies = loginRes.headers.get('set-cookie') || ''
         const searchRes = await fetch(`https://moontv.022340618.xyz/api/search?q=${encodeURIComponent(q)}`, {
