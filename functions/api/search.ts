@@ -99,44 +99,48 @@ export const onRequestGet = async (context: any) => {
       } catch (e: any) {}
     }
 
-    // Anime source search (agedm.io)
+    // Anime source search (agedm.io — try multiple API patterns)
     if (type === 'all' || type === 'movie' || type === 'tv' || type === 'anime') {
-      try {
-        const agedmRes = await fetch(`https://m.agedm.io/api/search?keyword=${encodeURIComponent(q)}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://m.agedm.io/' }
-        })
-        const agedmData: any = await agedmRes.json()
-        const animeList = agedmData?.data?.list || agedmData?.list || agedmData?.data || []
-        if (Array.isArray(animeList) && animeList.length > 0) {
-          results.push(...animeList.slice(0, 20).map((item: any) => {
-            const episodes = (item.playList || item.episodes || []).map((ep: any, i: number) => ({
-              title: ep.title || ep.name || `第${i + 1}集`,
-              url: ep.url || ep.src || ep.link || '',
+      const apiPatterns = [
+        `https://m.agedm.io/api/search?keyword=${encodeURIComponent(q)}`,
+        `https://m.agedm.io/api/v1/search?keyword=${encodeURIComponent(q)}`,
+        `https://m.agedm.io/search?keyword=${encodeURIComponent(q)}`,
+      ]
+      for (const apiUrl of apiPatterns) {
+        try {
+          const agedmRes = await fetch(apiUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://m.agedm.io/', 'Accept': 'application/json' }
+          })
+          if (!agedmRes.ok) continue
+          const agedmData: any = await agedmRes.json()
+          // Try all possible data paths
+          const animeList = agedmData?.data?.list || agedmData?.data?.results || agedmData?.data
+            || agedmData?.list || agedmData?.results || agedmData || []
+          if (Array.isArray(animeList) && animeList.length > 0) {
+            results.push(...animeList.slice(0, 20).map((item: any) => {
+              const episodes = (item.playList || item.episodes || item.list || []).map((ep: any, i: number) => ({
+                title: ep.title || ep.name || `第${i + 1}集`,
+                url: ep.url || ep.src || ep.link || ep.playUrl || '',
+              }))
+              const totalEps = episodes.length || item.totalEpisodes || item.epCount || 0
+              return {
+                source: 'agedm',
+                id: `agedm-${item.id || item.aid || item.animeId || ''}`,
+                title: item.title || item.name || item.animeTitle || '',
+                type: 'anime',
+                year: item.year ? parseInt(item.year) : undefined,
+                coverUrl: item.pic || item.cover || item.img || item.poster || item.image || '',
+                description: (item.desc || item.description || item.summary || '').slice(0, 200),
+                genres: item.tags || item.types || item.genres || [],
+                episodes,
+                totalEpisodes: totalEps > 0 ? totalEps : episodes.length,
+                chunks: null,
+              }
             }))
-            const totalEps = episodes.length
-            const chunkSize = 75
-            const chunks = totalEps > chunkSize
-              ? Array.from({ length: Math.ceil(totalEps / chunkSize) }, (_, i) => ({
-                  label: `第${i * chunkSize + 1}-${Math.min((i + 1) * chunkSize, totalEps)}集`,
-                  episodes: episodes.slice(i * chunkSize, (i + 1) * chunkSize),
-                }))
-              : null
-            return {
-              source: 'agedm',
-              id: `agedm-${item.id || item.aid || ''}`,
-              title: item.title || item.name || '',
-              type: 'anime',
-              year: item.year ? parseInt(item.year) : undefined,
-              coverUrl: item.pic || item.cover || item.img || item.poster,
-              description: (item.desc || item.description || '').slice(0, 200),
-              genres: item.tags || item.types || [],
-              episodes,
-              totalEpisodes: totalEps,
-              chunks,
-            }
-          }))
-        }
-      } catch (e: any) {}
+            break // Found results, stop trying other patterns
+          }
+        } catch (e: any) { /* continue to next pattern */ }
+      }
     }
 
     // Deduplicate by title — prefer results with episodes (video sources)
