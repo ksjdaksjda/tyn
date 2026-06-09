@@ -1,3 +1,7 @@
+// Run data repair BEFORE React mounts
+import { repairDataOnStartup } from './lib/startup-repair'
+repairDataOnStartup()
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
