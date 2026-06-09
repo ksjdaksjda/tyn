@@ -1,4 +1,4 @@
-import { Menu, Search } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const FILTERS = [
@@ -13,68 +13,41 @@ interface TopFilterBarProps {
   onMenuClick?: () => void
   activeFilter?: string
   onFilterChange?: (key: string) => void
-  showSearch?: boolean
-  searchValue?: string
-  onSearchChange?: (v: string) => void
 }
 
-export default function TopFilterBar({
-  onMenuClick,
-  activeFilter = 'all',
-  onFilterChange,
-  showSearch = false,
-  searchValue = '',
-  onSearchChange,
-}: TopFilterBarProps) {
+export default function TopFilterBar({ onMenuClick, activeFilter = 'all', onFilterChange }: TopFilterBarProps) {
   return (
-    <div className="sticky top-0 z-30 flex items-center gap-2 p-3 border-b border-[var(--border)]"
+    <div className="sticky top-0 z-30 flex items-center gap-2 p-2.5 mb-4"
       style={{
-        background: 'var(--nav-bg)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
       }}>
-      {/* Mobile menu button */}
-      <button
-        onClick={onMenuClick}
-        className="lg:hidden p-2 rounded-lg hover:bg-white/10 text-[var(--text)]"
-      >
-        <Menu size={20} />
+      <button onClick={onMenuClick} className="lg:hidden p-2 rounded-full bg-transparent border-0 text-[var(--text)]">
+        <Menu size={18} />
       </button>
 
-      {/* Filter pills */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => onFilterChange?.(f.key)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200',
-              activeFilter === f.key
-                ? 'text-white shadow-sm'
-                : 'text-[var(--text-muted)] hover:bg-white/10',
-            )}
-            style={activeFilter === f.key
-              ? { background: `linear-gradient(135deg, var(--accent), var(--accent2))` }
-              : undefined}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <span className="text-[0.75rem] tracking-[1px] mr-1" style={{ color: 'var(--text-muted)' }}>筛选</span>
 
-      {/* Search */}
-      {showSearch && (
-        <div className="relative ml-auto max-w-[200px]">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-          <input
-            type="text"
-            value={searchValue}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder="搜索..."
-            className="w-full pl-7 pr-3 py-1.5 rounded-lg text-xs border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-          />
-        </div>
-      )}
+      {FILTERS.map((f) => (
+        <button
+          key={f.key}
+          onClick={() => onFilterChange?.(f.key)}
+          className={cn(
+            'px-4 py-1.5 rounded-[18px] border text-[0.8rem] whitespace-nowrap font-[inherit] cursor-pointer transition-all duration-[0.25s]',
+          )}
+          style={{
+            borderColor: activeFilter === f.key ? 'var(--accent2)' : 'var(--border)',
+            background: activeFilter === f.key ? 'var(--accent2)' : 'var(--input-bg)',
+            color: activeFilter === f.key ? '#fff' : 'var(--text-muted)',
+            boxShadow: activeFilter === f.key ? '0 2px 10px rgba(92,192,160,0.25)' : 'none',
+          }}
+        >
+          {f.label}
+        </button>
+      ))}
     </div>
   )
 }

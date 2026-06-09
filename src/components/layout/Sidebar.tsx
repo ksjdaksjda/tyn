@@ -1,29 +1,25 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { X, Home, BookOpen, Bookmark, Library, ListTodo, Search, MessageSquare, Archive, PenLine, BarChart3, Settings, Sparkles } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useThemeStore } from '@/stores/themeStore'
 import { THEMES, type ThemeId } from '@/lib/themes'
 
 const NAV_ITEMS = [
-  { to: '/', label: '首页', icon: Home },
-  { to: '/journal', label: '手帐', icon: PenLine },
-  { to: '/watchlist', label: '想看清单', icon: Bookmark },
-  { to: '/shelf', label: '观影架', icon: Library },
-  { to: '/shelf/books', label: '书架', icon: BookOpen },
-  { to: '/checklist', label: '观影清单', icon: ListTodo },
-  { to: '/import', label: '媒体搜索', icon: Search },
-  { to: '/quotations', label: '摘录', icon: MessageSquare },
-  { to: '/archive', label: '档案馆', icon: Archive },
-  { to: '/reviews', label: '影评', icon: PenLine },
-  { to: '/report', label: '阅读报告', icon: BarChart3 },
-  { to: '/settings', label: '设置', icon: Settings },
+  { to: '/', label: '首页', icon: '🏠' },
+  { to: '/journal', label: '手帐', icon: '📒' },
+  { to: '/watchlist', label: '想看清单', icon: '📌' },
+  { to: '/shelf', label: '观影架', icon: '📚' },
+  { to: '/shelf/books', label: '书架', icon: '📖' },
+  { to: '/checklist', label: '观影清单', icon: '📋' },
+  { to: '/import', label: '媒体搜索', icon: '🔍' },
+  { to: '/quotations', label: '摘录', icon: '💬' },
+  { to: '/archive', label: '档案馆', icon: '📦' },
+  { to: '/reviews', label: '影评', icon: '📝' },
+  { to: '/report', label: '阅读报告', icon: '📊' },
+  { to: '/settings', label: '设置', icon: '⚙' },
 ]
 
-interface SidebarProps {
-  isOpen: boolean
-  onToggle: () => void
-  onClose: () => void
-}
+interface SidebarProps { isOpen: boolean; onToggle: () => void; onClose: () => void }
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { theme, setTheme } = useThemeStore()
@@ -37,8 +33,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           background: 'var(--nav-bg)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
+          transition: 'all 0.6s ease',
         }}>
-        <SidebarContent theme={theme} setTheme={setTheme} location={location} onClose={onClose} />
+        <SidebarInner theme={theme} setTheme={setTheme} location={location} onClose={onClose} />
       </aside>
 
       {/* Mobile sidebar */}
@@ -46,56 +43,66 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         'lg:hidden fixed top-0 left-0 right-0 z-50 transition-transform duration-300 border-b border-[var(--border)]',
         isOpen ? 'translate-y-0' : '-translate-y-full',
       )}
-        style={{
-          background: 'var(--nav-bg)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-        }}>
-        <SidebarContent theme={theme} setTheme={setTheme} location={location} onClose={onClose} isMobile />
+        style={{ background: 'var(--nav-bg)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+        <div className="relative">
+          <button onClick={onClose} className="absolute top-1.5 right-2 z-[102] w-[44px] h-[44px] rounded-full border-none bg-black/5 text-[var(--text)] text-xl flex items-center justify-center lg:hidden">
+            <X size={20} />
+          </button>
+          <SidebarInner theme={theme} setTheme={setTheme} location={location} onClose={onClose} />
+        </div>
       </aside>
+
+      {/* Mobile backdrop */}
+      <div className={cn(
+        'lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-300',
+        isOpen ? 'opacity-100 pointer-events-all' : 'opacity-0 pointer-events-none',
+      )} onClick={onClose} />
     </>
   )
 }
 
-function SidebarContent({
-  theme, setTheme, onClose, isMobile,
+function SidebarInner({
+  theme, setTheme, location, onClose,
 }: {
-  theme: string
-  setTheme: (t: ThemeId) => void
-  location: { pathname: string }
-  onClose: () => void
-  isMobile?: boolean
+  theme: string; setTheme: (t: ThemeId) => void; location: { pathname: string }; onClose: () => void
 }) {
   return (
-    <div className="flex flex-col h-full p-3">
+    <div className="flex flex-col h-full p-4 gap-2">
       {/* Logo */}
-      <div className="flex items-center justify-between mb-4 px-2 pt-2">
-        <span className="text-xl font-bold text-shimmer">🌳 树洞</span>
-        {isMobile && (
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/20">
-            <X size={18} />
-          </button>
-        )}
+      <div className="text-center py-2 mb-2 cursor-pointer">
+        <span className="text-xl font-bold tracking-[2px] whitespace-nowrap"
+          style={{
+            background: 'linear-gradient(90deg, var(--accent), var(--accent2))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+          🌳 树洞
+        </span>
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 overflow-y-auto space-y-0.5">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-          const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to))
+      <nav className="flex flex-col gap-0.5 flex-1">
+        {NAV_ITEMS.map(({ to, label, icon }) => {
+          const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
           return (
             <NavLink
               key={to}
               to={to}
               onClick={onClose}
               className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200',
+                'flex items-center gap-2 py-2.5 px-3.5 rounded-[10px] text-[0.82rem] whitespace-nowrap transition-all duration-[0.28s] relative',
                 active
                   ? 'text-[var(--accent)] font-medium'
-                  : 'text-[var(--text-muted)] hover:bg-white/10 hover:text-[var(--text)]',
+                  : 'text-[var(--text-muted)] hover:bg-[var(--tag-bg)] hover:text-[var(--text)] hover:translate-x-0.5',
               )}
-              style={active ? { boxShadow: 'inset 3px 0 0 var(--accent)' } : undefined}
+              style={active ? {
+                background: 'var(--tag-bg)',
+                borderRadius: '0 10px 10px 0',
+                paddingLeft: '11px',
+                boxShadow: 'inset 3px 0 0 var(--accent)',
+              } : undefined}
             >
-              <Icon size={16} />
+              <span className="text-base">{icon}</span>
               <span>{label}</span>
             </NavLink>
           )
@@ -103,26 +110,19 @@ function SidebarContent({
       </nav>
 
       {/* Theme switcher */}
-      <div className="pt-3 border-t border-[var(--border)]">
-        <div className="flex flex-wrap gap-1.5 justify-center">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
-              className={cn(
-                'w-6 h-6 rounded-full transition-all duration-200',
-                theme === t.id ? 'ring-2 ring-[var(--text)] scale-110' : 'hover:scale-105',
-              )}
-              style={{
-                background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})`,
-              }}
-              title={t.name}
-            />
-          ))}
-        </div>
-        <p className="text-center text-[10px] text-[var(--text-muted)] mt-1.5">
-          {THEMES.find(t => t.id === theme)?.icon} {THEMES.find(t => t.id === theme)?.name}
-        </p>
+      <div className="flex gap-1 flex-wrap justify-center py-3 px-1 mt-auto border-t border-[var(--border)]">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTheme(t.id)}
+            className={cn(
+              'w-[18px] h-[18px] rounded-full border-2 border-transparent transition-all duration-300',
+              theme === t.id ? 'border-[var(--text)] shadow-[0_0_8px_var(--glow)] scale-110' : 'hover:scale-120',
+            )}
+            style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})` }}
+            title={t.name}
+          />
+        ))}
       </div>
     </div>
   )
