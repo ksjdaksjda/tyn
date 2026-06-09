@@ -5,49 +5,68 @@ import { useMovie } from '@/hooks/useMovies'
 import VideoPlayer from '@/components/player/VideoPlayer'
 import type { Episode } from '@/types'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
-
 export default function PlayerPage() {
   const { itemId } = useParams<{ itemId: string }>()
   const navigate = useNavigate()
   const { data: item } = useMovie(itemId)
   const [currentSrc, setCurrentSrc] = useState('')
   const [currentEpisodes, setCurrentEpisodes] = useState<Episode[]>([])
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!item) return
+    setError('')
 
-    // Parse play URLs
-    let urls: any[] = []
+    let playUrls: any[] = []
     try {
-      urls = typeof item.playUrls === 'string' ? JSON.parse(item.playUrls) : item.playUrls || []
-    } catch {
-      urls = []
+      playUrls = typeof item.playUrls === 'string' ? JSON.parse(item.playUrls) : (item.playUrls || [])
+    } catch { playUrls = [] }
+
+    if (playUrls.length === 0) {
+      setError('没有可用的播放源。请去搜索导入添加播放源。')
+      return
     }
 
-    if (urls.length > 0) {
-      const firstSource = urls[0]
-      if (firstSource.episodes && firstSource.episodes.length > 0) {
-        setCurrentEpisodes(firstSource.episodes)
-        // Proxy m3u8 through our API
-        const rawUrl = firstSource.episodes[item.currentEpisode - 1 || 0]?.url || firstSource.url
-        setCurrentSrc(`${API_BASE}/api/proxy/m3u8?url=${encodeURIComponent(rawUrl)}`)
-      } else if (firstSource.url) {
-        setCurrentSrc(`${API_BASE}/api/proxy/m3u8?url=${encodeURIComponent(firstSource.url)}`)
+    const source = playUrls[0]
+    let episodes: Episode[] = []
+
+    if (source.episodes && source.episodes.length > 0) {
+      episodes = source.episodes.map((ep: any, i: number) => {
+        if (typeof ep === 'string') return { title: `第${i + 1}集`, url: ep }
+        return { title: ep.title || `第${i + 1}集`, url: ep.url || '' }
+      })
+      setCurrentEpisodes(episodes)
+
+      // Get first episode URL
+      const firstEp = episodes[0]
+      if (firstEp?.url) {
+        const proxyUrl = firstEp.url.includes('/api/proxy') ? firstEp.url :
+          `/api/proxy/m3u8?url=${encodeURIComponent(firstEp.url)}`
+        setCurrentSrc(proxyUrl)
+      } else {
+        setError('播放源链接无效')
       }
+    } else if (source.url) {
+      setCurrentEpisodes([{ title: '正片', url: source.url }])
+      const proxyUrl = source.url.includes('/api/proxy') ? source.url :
+        `/api/proxy/m3u8?url=${encodeURIComponent(source.url)}`
+      setCurrentSrc(proxyUrl)
+    } else {
+      setError('没有可用的播放链接')
     }
   }, [item])
 
   const handleEpisodeChange = (ep: Episode) => {
-    setCurrentSrc(`${API_BASE}/api/proxy/m3u8?url=${encodeURIComponent(ep.url)}`)
+    const proxyUrl = ep.url.includes('/api/proxy') ? ep.url :
+      `/api/proxy/m3u8?url=${encodeURIComponent(ep.url)}`
+    setCurrentSrc(proxyUrl)
   }
 
   return (
-    <div className="space-y-4">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
-      >
+    <div>
+      <button onClick={() => navigate(-1)}
+        className="flex items-center gap-1.5 text-sm mb-4 hover:opacity-80"
+        style={{ color: 'var(--text-muted)' }}>
         <ArrowLeft size={16} /> 返回
       </button>
 
@@ -60,18 +79,13 @@ export default function PlayerPage() {
           onEpisodeChange={handleEpisodeChange}
         />
       ) : (
-        <div className="glass p-12 text-center text-[var(--text-muted)]">
-          <p className="text-lg">🎬 {item?.title || '未知影片'}</p>
-          <p className="text-sm mt-2">{item ? '没有可用的播放源' : '加载中...'}</p>
-          {item && (
-            <button
-              onClick={() => navigate('/import')}
-              className="mt-4 px-4 py-2 rounded-lg text-sm text-white"
-              style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent2))' }}
-            >
-              🔍 去搜索播放源
-            </button>
-          )}
+        <div className="text-center p-12" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, backdropFilter: 'blur(8px)' }}>
+          <p className="text-lg" style={{ color: 'var(--text)' }}>🎬 {item?.title || '未知影片'}</p>
+          <p className="text-sm mt-2" style={{ color: error ? 'var(--danger)' : 'var(--text-muted)' }}>{error || '加载中...'}</p>
+          <div className="flex gap-2 justify-center mt-4">
+            <button onClick={() => navigate('/import')} className="btn btn-primary btn-sm">🔍 搜索播放源</button>
+            <button onClick={() => navigate(-1)} className="btn btn-sm">返回</button>
+          </div>
         </div>
       )}
     </div>

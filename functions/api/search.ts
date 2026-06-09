@@ -58,11 +58,13 @@ export const onRequestGet = async (context: any) => {
         if (moontvResults.length > 0) {
           results.push(...moontvResults.slice(0, 10).map((item: any) => {
             // moontv new API format: title, poster, episodes[], source, year, desc, type_name, douban_id
-            let episodes: any[] = []
+            let episodes: {title:string,url:string}[] = []
             if (Array.isArray(item.episodes)) {
-              episodes = item.episodes
+              episodes = item.episodes.map((ep: any, i: number) => {
+                if (typeof ep === 'string') return { title: `第${i+1}集`, url: ep }
+                return { title: ep.title || ep.name || `第${i+1}集`, url: ep.url || ep }
+              })
             } else if (item.vod_play_url) {
-              // Legacy format fallback
               episodes = item.vod_play_url.split('$$$').map((part: string) => {
                 const [label, u] = part.includes('$') ? part.split('$') : [part, part]
                 return { title: label, url: u }
