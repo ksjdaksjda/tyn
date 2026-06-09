@@ -17,38 +17,22 @@ import SettingsPage from './pages/SettingsPage'
 import PlayerPage from './pages/PlayerPage'
 import ReaderPage from './pages/ReaderPage'
 
-class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { error: null }
   }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-
+  static getDerivedStateFromError(error: Error) { return { error } }
   render() {
-    if (this.state.hasError) {
+    if (this.state.error) {
       return (
-        <div style={{
-          minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-          color: '#c8d0e0', fontFamily: 'sans-serif', padding: '2rem',
-        }}>
-          <div style={{ textAlign: 'center', maxWidth: '500px' }}>
-            <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🌳</h1>
-            <h2 style={{ color: '#a080e0', marginBottom: '1rem' }}>页面加载出错</h2>
-            <p style={{ color: '#7888a8', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              {this.state.error?.message || '未知错误'}
-            </p>
-            <button
-              onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload() }}
-              style={{
-                background: 'linear-gradient(135deg, #a080e0, #60a0d8)',
-                color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '0.75rem',
-                cursor: 'pointer', fontSize: '1rem',
-              }}
-            >
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1a1a2e, #16213e)', color: '#c8d0e0', fontFamily: 'sans-serif', padding: 40, textAlign: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: 48, marginBottom: 8 }}>🌳</h1>
+            <h2 style={{ color: '#a080e0' }}>页面加载出错</h2>
+            <p style={{ color: '#7888a8', fontSize: 14, maxWidth: 500, margin: '12px auto' }}>{this.state.error?.message}</p>
+            <button onClick={() => { this.setState({ error: null }); window.location.reload() }}
+              style={{ marginTop: 16, padding: '10px 32px', background: 'linear-gradient(135deg, #a080e0, #60a0d8)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>
               重新加载
             </button>
           </div>
