@@ -14,7 +14,6 @@ export const onRequestGet = async (context: any) => {
     }
 
     let results: any[] = []
-    let moontvDebug: any = null
 
     // TMDB search
     if (apiKey && (type === 'all' || type === 'movie' || type === 'tv')) {
@@ -57,7 +56,6 @@ export const onRequestGet = async (context: any) => {
         const data: any = await searchRes.json()
         const moontvResults = data?.list || data?.results || data?.data || []
         if (moontvResults.length > 0) {
-          moontvDebug = { count: moontvResults.length, firstKeys: Object.keys(moontvResults[0]||{}), firstTitle: moontvResults[0]?.title, firstId: moontvResults[0]?.id, hasEpisodes: Array.isArray(moontvResults[0]?.episodes), epCount: moontvResults[0]?.episodes?.length }
           results.push(...moontvResults.slice(0, 10).map((item: any) => {
             // moontv new API format: title, poster, episodes[], source, year, desc, type_name, douban_id
             let episodes: any[] = []
@@ -101,7 +99,7 @@ export const onRequestGet = async (context: any) => {
     }
     results = Array.from(titleMap.values())
 
-    return new Response(JSON.stringify({ results, _debug: { total: results.length, hasVideo: results.some((r:any)=>(r.episodes?.length||0)>0), sources: [...new Set(results.map((r:any)=>r.source))], moontv: moontvDebug } }), {
+    return new Response(JSON.stringify({ results }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' }
     })
   } catch (e: any) {
