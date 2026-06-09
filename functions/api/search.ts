@@ -57,24 +57,30 @@ export const onRequestGet = async (context: any) => {
         const data: any = await searchRes.json()
         const moontvResults = data?.list || data?.results || data?.data || []
         if (moontvResults.length > 0) {
-          moontvDebug = { count: moontvResults.length, firstKeys: Object.keys(moontvResults[0]||{}), firstTitle: moontvResults[0]?.vod_name || moontvResults[0]?.title, firstId: moontvResults[0]?.vod_id, hasPlayUrl: !!moontvResults[0]?.vod_play_url }
+          moontvDebug = { count: moontvResults.length, firstKeys: Object.keys(moontvResults[0]||{}), firstTitle: moontvResults[0]?.title, firstId: moontvResults[0]?.id, hasEpisodes: Array.isArray(moontvResults[0]?.episodes), epCount: moontvResults[0]?.episodes?.length }
           results.push(...moontvResults.slice(0, 10).map((item: any) => {
+            // moontv new API format: title, poster, episodes[], source, year, desc, type_name, douban_id
             let episodes: any[] = []
-            if (item.vod_play_url) {
+            if (Array.isArray(item.episodes)) {
+              episodes = item.episodes
+            } else if (item.vod_play_url) {
+              // Legacy format fallback
               episodes = item.vod_play_url.split('$$$').map((part: string) => {
                 const [label, u] = part.includes('$') ? part.split('$') : [part, part]
                 return { title: label, url: u }
               })
             }
-            const vidTitle = item.vod_name || item.title || item.name || ''
+            const vidTitle = item.title || item.vod_name || item.name || ''
+            const vidType = (item.type_name || item.class || '').includes('动漫') ? 'anime' :
+                           (item.type_name || item.class || '').includes('剧') ? 'tv' : 'movie'
             return {
               source: 'video',
-              id: `video-${item.vod_id || ''}`,
+              id: `video-${item.id || item.vod_id || ''}`,
               title: vidTitle,
-              type: (item.type_name || '').includes('动漫') ? 'anime' : (item.type_name || '').includes('剧') ? 'tv' : 'movie',
-              year: item.vod_year ? parseInt(item.vod_year) : undefined,
-              coverUrl: item.vod_pic || item.pic || item.cover || item.img,
-              description: item.vod_remarks || item.remarks || item.description,
+              type: vidType,
+              year: item.year || (item.vod_year ? parseInt(item.vod_year) : undefined),
+              coverUrl: item.poster || item.cover || item.pic || item.vod_pic || item.img,
+              description: item.desc || item.description || item.vod_remarks || item.remarks,
               episodes,
             }
           }))
