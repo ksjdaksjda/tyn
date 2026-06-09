@@ -31,10 +31,16 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Er
             <h1 style={{ fontSize: 48, marginBottom: 8 }}>🌳</h1>
             <h2 style={{ color: '#a080e0' }}>页面加载出错</h2>
             <p style={{ color: '#7888a8', fontSize: 14, maxWidth: 500, margin: '12px auto' }}>{this.state.error?.message}</p>
-            <button onClick={() => { this.setState({ error: null }); window.location.reload() }}
-              style={{ marginTop: 16, padding: '10px 32px', background: 'linear-gradient(135deg, #a080e0, #60a0d8)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>
-              重新加载
-            </button>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+              <button onClick={() => { this.setState({ error: null }); window.location.reload() }}
+                style={{ padding: '10px 32px', background: 'linear-gradient(135deg, #a080e0, #60a0d8)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>
+                重新加载
+              </button>
+              <button onClick={() => { try { localStorage.removeItem('treehole_items'); localStorage.removeItem('treehole_reviews'); } catch {} this.setState({ error: null }); window.location.reload() }}
+                style={{ padding: '10px 32px', background: '#e06060', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>
+                清除数据恢复
+              </button>
+            </div>
           </div>
         </div>
       )

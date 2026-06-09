@@ -60,7 +60,8 @@ export const onRequestGet = async (context: any) => {
             // moontv new API format: title, poster, episodes[], source, year, desc, type_name, douban_id
             let episodes: {title:string,url:string}[] = []
             if (Array.isArray(item.episodes)) {
-              episodes = item.episodes.map((ep: any, i: number) => {
+              const rawEps = item.episodes.slice(0, 200) // Limit to 200 max to prevent overflow
+              episodes = rawEps.map((ep: any, i: number) => {
                 if (typeof ep === 'string') return { title: `第${i+1}集`, url: ep }
                 return { title: ep.title || ep.name || `第${i+1}集`, url: ep.url || ep }
               })
