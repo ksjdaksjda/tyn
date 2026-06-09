@@ -74,7 +74,7 @@ export default function ChecklistPage() {
                   </td>,
                   <td key="r" className="p-2.5" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
                     <span className="text-[0.9rem] tracking-[1.5px] cursor-pointer" style={{ color: 'var(--star-color)', textShadow: '0 0 3px var(--glow)' }}>
-                      {item.rating ? '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating) : '☆☆☆☆☆'}
+                      {item.rating ? '★'.repeat(Math.round(item.rating||0)) + '☆'.repeat(Math.max(0,5-Math.round(item.rating||0))) : '☆☆☆☆☆'}
                     </span>
                   </td>,
                   <td key="d" className="p-2.5 text-[0.72rem]" style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>{item.watchDate?.split('T')[0] || '-'}</td>,

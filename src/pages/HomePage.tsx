@@ -83,13 +83,13 @@ export default function HomePage() {
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-[0.88rem] flex items-center gap-1.5" style={{color:'var(--text)'}}>{item.title}
                   <span className="inline-block px-2 py-0.5 rounded-lg text-[0.65rem] font-medium" style={{background:item.status==='watched'?'rgba(80,200,120,0.22)':item.status==='watching'?'rgba(74,158,255,0.22)':'rgba(255,180,60,0.22)',color:item.status==='watched'?'#388050':item.status==='watching'?'#3878c0':'#c88020'}}>
-                    {{want:'想看',watching:'在看',watched:'已看',paused:'暂停',dropped:'弃了'}[item.status]||item.status}</span>
+                    {({want:'想看',watching:'在看',watched:'已看',paused:'暂停',dropped:'弃了'} as Record<string,string>)[item.status]||item.status}</span>
                 </div>
                 <div className="text-[0.7rem]" style={{color:'var(--text-muted)'}}>
                   {item.year}{item.director?` · ${item.director}`:''}{item.author?` · ${item.author}`:''}</div>
-                {(item.rating||0)>0&&<div className="text-[0.72rem] tracking-[0.5px] mt-1" style={{color:'var(--star-color)'}}>{'★'.repeat(item.rating)}{'☆'.repeat(5-item.rating)}</div>}
+                {(item.rating||0)>0&&<div className="text-[0.72rem] tracking-[0.5px] mt-1" style={{color:'var(--star-color)'}}>{'★'.repeat(Math.round(item.rating||0))}{'☆'.repeat(Math.max(0,5-Math.round(item.rating||0)))}</div>}
                 {item.tags&&item.tags.length>0&&<div className="flex flex-wrap gap-1 mt-1">
-                  {item.tags.slice(0,3).map(t=><span key={t} className="px-1 py-0.5 text-[0.6rem] rounded-md cursor-pointer" style={{background:'var(--tag-bg)',color:'var(--text-muted)'}}>{t}</span>)}</div>}
+                  {item.tags.slice(0,3).map((t:string)=><span key={t} className="px-1 py-0.5 text-[0.6rem] rounded-md cursor-pointer" style={{background:'var(--tag-bg)',color:'var(--text-muted)'}}>{t}</span>)}</div>}
               </div>
             </div>
           ))}
