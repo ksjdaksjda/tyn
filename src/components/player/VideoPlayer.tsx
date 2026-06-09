@@ -2,193 +2,175 @@ import { useRef, useEffect, useState } from 'react'
 import Hls from 'hls.js'
 import { Play, Pause, Maximize, Volume2, VolumeX } from 'lucide-react'
 
-interface Episode {
-  title: string
-  url: string
-}
+interface Episode { title: string; url: string }
 
 interface VideoPlayerProps {
   src: string
   episodes?: Episode[]
   title?: string
   poster?: string
-  onEpisodeChange?: (episode: Episode) => void
+  onEpisodeChange?: (ep: Episode) => void
+  onError?: () => void
 }
 
-export default function VideoPlayer({ src, episodes, title, poster, onEpisodeChange }: VideoPlayerProps) {
+export default function VideoPlayer({ src, episodes, title, poster, onEpisodeChange, onError }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [showControls, setShowControls] = useState(true)
-  const [activeEpisode, setActiveEpisode] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [activeEp, setActiveEp] = useState(0)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [useHls, setUseHls] = useState(false)
 
   useEffect(() => {
     const video = videoRef.current
     if (!video || !src) return
 
-    setError(null)
+    setLoading(true)
+    setError('')
     let hls: Hls | null = null
+    let destroyed = false
 
-    if (src.endsWith('.m3u8') || src.includes('.m3u8')) {
-      if (Hls.isSupported()) {
-      hls = new Hls({})
+    const setup = async () => {
+      const isM3u8 = src.includes('.m3u8') || src.includes('m3u8')
+
+      if (isM3u8 && Hls.isSupported()) {
+        setUseHls(true)
+        hls = new Hls({
+          enableWorker: false,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+        })
         hls.loadSource(src)
         hls.attachMedia(video)
-        hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal) {
-            setError('视频加载失败，正在尝试恢复...')
-            hls?.recoverMediaError()
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (!destroyed) {
+            setLoading(false)
+            video.play().catch(() => {})
           }
         })
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+
+        hls.on(Hls.Events.ERROR, (_ev, data) => {
+          if (!destroyed && data.fatal) {
+            setError('HLS加载失败，尝试直连...')
+            if (hls) { hls.destroy(); hls = null }
+            // Fallback: try native
+            video.src = src
+            setUseHls(false)
+            video.load()
+            video.play().catch(() => {})
+          }
+        })
+      } else {
+        // Native playback
+        setUseHls(false)
         video.src = src
+        video.load()
       }
-    } else {
-      video.src = src
+
+      const onReady = () => {
+        if (!destroyed) setLoading(false)
+      }
+      const onErr = () => {
+        if (!destroyed) {
+          setError('播放失败')
+          setLoading(false)
+          onError?.()
+        }
+      }
+
+      video.addEventListener('loadedmetadata', onReady)
+      video.addEventListener('canplay', onReady)
+      video.addEventListener('error', onErr)
+
+      return () => {
+        destroyed = true
+        video.removeEventListener('loadedmetadata', onReady)
+        video.removeEventListener('canplay', onReady)
+        video.removeEventListener('error', onErr)
+        if (hls) hls.destroy()
+      }
     }
 
-    const onTimeUpdate = () => setCurrentTime(video.currentTime)
-    const onDuration = () => setDuration(video.duration || 0)
+    const cleanup = setup()
+
     const onPlay = () => setPlaying(true)
     const onPause = () => setPlaying(false)
-    const onError = () => setError('播放出错，请检查视频源')
-
-    video.addEventListener('timeupdate', onTimeUpdate)
-    video.addEventListener('loadedmetadata', onDuration)
+    const onTime = () => setCurrentTime(video.currentTime)
+    const onDur = () => setDuration(video.duration || 0)
     video.addEventListener('play', onPlay)
     video.addEventListener('pause', onPause)
-    video.addEventListener('error', onError)
+    video.addEventListener('timeupdate', onTime)
+    video.addEventListener('durationchange', onDur)
 
     return () => {
-      if (hls) hls.destroy()
-      video.removeEventListener('timeupdate', onTimeUpdate)
-      video.removeEventListener('loadedmetadata', onDuration)
       video.removeEventListener('play', onPlay)
       video.removeEventListener('pause', onPause)
-      video.removeEventListener('error', onError)
+      video.removeEventListener('timeupdate', onTime)
+      video.removeEventListener('durationchange', onDur)
+      cleanup?.then?.(fn => fn())
     }
   }, [src])
 
-  const togglePlay = () => {
-    const video = videoRef.current
-    if (!video) return
-    video.paused ? video.play() : video.pause()
-  }
-
-  const toggleMute = () => {
-    const video = videoRef.current
-    if (!video) return
-    video.muted = !video.muted
-    setMuted(video.muted)
-  }
-
-  const toggleFullscreen = () => {
-    containerRef.current?.requestFullscreen?.()
-  }
-
+  const togglePlay = () => { const v = videoRef.current; if (v) v.paused ? v.play().catch(()=>{}) : v.pause() }
+  const toggleMute = () => { const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted) } }
+  const toggleFS = () => videoRef.current?.closest('.player-container')?.requestFullscreen?.()
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const video = videoRef.current
-    if (!video || !duration) return
+    const v = videoRef.current; if (!v || !duration) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const ratio = (e.clientX - rect.left) / rect.width
-    video.currentTime = ratio * duration
+    v.currentTime = ((e.clientX - rect.left) / rect.width) * duration
   }
-
-  const formatTime = (t: number) => {
-    const m = Math.floor(t / 60)
-    const s = Math.floor(t % 60)
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
-
-  const showControlsTemp = () => {
-    setShowControls(true)
-    clearTimeout(hideTimerRef.current)
-    hideTimerRef.current = setTimeout(() => setShowControls(false), 3000)
-  }
+  const fmt = (t: number) => { const m = Math.floor(t/60); const s = Math.floor(t%60); return `${m}:${s.toString().padStart(2,'0')}` }
 
   return (
     <div className="space-y-4">
-      {/* Player container */}
-      <div
-        ref={containerRef}
-        className="relative w-full bg-black rounded-xl overflow-hidden shadow-2xl group"
-        style={{ aspectRatio: '16/9' }}
-        onMouseMove={showControlsTemp}
-        onClick={togglePlay}
-      >
-        <video
-          ref={videoRef}
-          className="w-full h-full"
-          poster={poster}
-          playsInline
-          crossOrigin="anonymous"
-        />
+      <div className="player-container relative w-full bg-black rounded-xl overflow-hidden shadow-2xl" style={{ aspectRatio: '16/9' }}>
+        <video ref={videoRef} className="w-full h-full" poster={poster} playsInline crossOrigin="anonymous" onClick={togglePlay} />
 
-        {/* Error overlay */}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-sm">
-            {error}
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+            <div className="text-white text-sm animate-pulse">⏳ 加载中...</div>
+          </div>
+        )}
+
+        {error && !loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 flex-col gap-2">
+            <p className="text-white text-sm">{error}</p>
+            {onError && <button onClick={onError} className="px-3 py-1 bg-white/20 text-white text-xs rounded">切换直连</button>}
           </div>
         )}
 
         {/* Controls */}
-        <div
-          className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Progress bar */}
-          <div className="h-1 bg-white/20 rounded-full cursor-pointer mb-3" onClick={seek}>
-            <div className="h-full bg-[var(--accent)] rounded-full transition-all" style={{ width: duration ? `${(currentTime / duration) * 100}%` : '0%' }} />
+        {!loading && (
+          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent" onClick={e => e.stopPropagation()}>
+            <div className="h-1 bg-white/20 rounded-full cursor-pointer mb-2" onClick={seek}>
+              <div className="h-full rounded-full transition-all" style={{ width: duration ? `${(currentTime/duration)*100}%` : '0%', background: 'var(--accent, #2a9db8)' }} />
+            </div>
+            <div className="flex items-center gap-3 text-white">
+              <button onClick={togglePlay}>{playing ? <Pause size={18} /> : <Play size={18} />}</button>
+              <span className="text-xs tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
+              <div className="flex-1" />
+              <button onClick={toggleMute}>{muted ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
+              <button onClick={toggleFS}><Maximize size={16} /></button>
+            </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button onClick={togglePlay} className="text-white hover:text-[var(--accent)]">
-              {playing ? <Pause size={20} /> : <Play size={20} />}
-            </button>
-
-            <span className="text-white text-xs tabular-nums">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-
-            <div className="flex-1" />
-
-            <button onClick={toggleMute} className="text-white hover:text-[var(--accent)]">
-              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-            </button>
-
-            <button onClick={toggleFullscreen} className="text-white hover:text-[var(--accent)]">
-              <Maximize size={16} />
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Title */}
-      {title && <h2 className="text-lg font-bold text-[var(--text)]">{title}</h2>}
+      {title && <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>{title}</h2>}
 
-      {/* Episode selector */}
       {episodes && episodes.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-[var(--text)]">📺 剧集列表 ({episodes.length} 集)</h3>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-1.5 max-h-[200px] overflow-y-auto">
-            {episodes.map((ep, idx) => (
-              <button
-                key={idx}
-                onClick={() => { setActiveEpisode(idx); onEpisodeChange?.(ep) }}
+        <div>
+          <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>📺 剧集 ({episodes.length})</h3>
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 max-h-[200px] overflow-y-auto">
+            {episodes.map((ep, i) => (
+              <button key={i} onClick={() => { setActiveEp(i); onEpisodeChange?.(ep) }}
                 className="px-2 py-1.5 text-xs rounded-lg border transition-all truncate"
-                style={{
-                  borderColor: activeEpisode === idx ? 'var(--accent)' : 'var(--border)',
-                  color: activeEpisode === idx ? 'var(--accent)' : 'var(--text-muted)',
-                  background: activeEpisode === idx ? 'var(--accent2-dim)' : 'transparent',
-                }}
-              >
-                {ep.title || `${idx + 1}`}
-              </button>
+                style={{ borderColor: i === activeEp ? 'var(--accent)' : 'var(--border)', color: i === activeEp ? 'var(--accent)' : 'var(--text-muted)', background: i === activeEp ? 'var(--accent2-dim)' : 'transparent' }}>
+                {ep.title}</button>
             ))}
           </div>
         </div>
