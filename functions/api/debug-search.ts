@@ -27,7 +27,7 @@ export const onRequestGet = async (context: any) => {
       headers: { Cookie: cookies }
     })
     const sData: any = await searchRes.json()
-    debug.steps.push({ api: 'moontv_search', status: searchRes.status, count: sData.results?.length || sData.list?.length || 0 })
+    debug.steps.push({ api: 'moontv_search', status: searchRes.status, keys: Object.keys(sData), count: sData.results?.length || sData.list?.length || sData.data?.length || 0, sample: JSON.stringify(sData).slice(0, 500) })
   } catch (e: any) {
     debug.steps.push({ api: 'moontv', error: e.message })
   }

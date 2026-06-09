@@ -54,8 +54,9 @@ export const onRequestGet = async (context: any) => {
           headers: { Cookie: cookies }
         })
         const data: any = await searchRes.json()
-        if (data.results) {
-          results.push(...data.results.slice(0, 10).map((item: any) => {
+        const moontvResults = data.results || data.list || data.data || []
+        if (moontvResults.length > 0) {
+          results.push(...moontvResults.slice(0, 10).map((item: any) => {
             let episodes: any[] = []
             if (item.vod_play_url) {
               episodes = item.vod_play_url.split('$$$').map((part: string) => {
