@@ -88,6 +88,33 @@ export const onRequestGet = async (context: any) => {
       } catch (e: any) {}
     }
 
+    // Anime source search (agedm.io)
+    if (type === 'all' || type === 'movie' || type === 'tv' || type === 'anime') {
+      try {
+        const agedmRes = await fetch(`https://m.agedm.io/api/search?keyword=${encodeURIComponent(q)}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://m.agedm.io/' }
+        })
+        const agedmData: any = await agedmRes.json()
+        const animeList = agedmData?.data?.list || agedmData?.list || agedmData?.data || []
+        if (Array.isArray(animeList) && animeList.length > 0) {
+          results.push(...animeList.slice(0, 20).map((item: any) => ({
+            source: 'agedm',
+            id: `agedm-${item.id || item.aid || ''}`,
+            title: item.title || item.name || '',
+            type: 'anime',
+            year: item.year ? parseInt(item.year) : undefined,
+            coverUrl: item.pic || item.cover || item.img || item.poster,
+            description: (item.desc || item.description || '').slice(0, 200),
+            genres: item.tags || item.types || [],
+            episodes: (item.playList || item.episodes || []).map((ep: any, i: number) => ({
+              title: ep.title || ep.name || `第${i + 1}集`,
+              url: ep.url || ep.src || ep.link || '',
+            })),
+          })))
+        }
+      } catch (e: any) {}
+    }
+
     // Deduplicate by title — prefer results with episodes (video sources)
     const titleMap = new Map<string, any>()
     for (const r of results) {
