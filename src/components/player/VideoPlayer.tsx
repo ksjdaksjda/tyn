@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import Hls from 'hls.js'
-import { Play, Pause, Maximize, Volume2, VolumeX } from 'lucide-react'
+import { Play, Pause, Maximize, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Episode { title: string; url: string }
 
@@ -13,6 +13,8 @@ interface VideoPlayerProps {
   onError?: () => void
 }
 
+const EPISODES_PER_PAGE = 50
+
 export default function VideoPlayer({ src, episodes, title, poster, onEpisodeChange, onError }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -20,9 +22,9 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [activeEp, setActiveEp] = useState(0)
+  const [epPage, setEpPage] = useState(0)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [useHls, setUseHls] = useState(false)
 
   useEffect(() => {
     const video = videoRef.current
@@ -37,7 +39,7 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
       const isM3u8 = src.includes('.m3u8') || src.includes('m3u8')
 
       if (isM3u8 && Hls.isSupported()) {
-        setUseHls(true)
+        /* hls mode */
         hls = new Hls({
           enableWorker: false,
           maxBufferLength: 30,
@@ -59,14 +61,12 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
             if (hls) { hls.destroy(); hls = null }
             // Fallback: try native
             video.src = src
-            setUseHls(false)
             video.load()
             video.play().catch(() => {})
           }
         })
       } else {
         // Native playback
-        setUseHls(false)
         video.src = src
         video.load()
       }
@@ -162,19 +162,38 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
 
       {title && <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>{title}</h2>}
 
-      {episodes && episodes.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>📺 剧集 ({episodes.length})</h3>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 max-h-[200px] overflow-y-auto">
-            {episodes.map((ep, i) => (
-              <button key={i} onClick={() => { setActiveEp(i); onEpisodeChange?.(ep) }}
-                className="px-2 py-1.5 text-xs rounded-lg border transition-all truncate"
-                style={{ borderColor: i === activeEp ? 'var(--accent)' : 'var(--border)', color: i === activeEp ? 'var(--accent)' : 'var(--text-muted)', background: i === activeEp ? 'var(--accent2-dim)' : 'transparent' }}>
-                {ep.title}</button>
-            ))}
+      {episodes && episodes.length > 0 && (() => {
+        const totalPages = Math.ceil(episodes.length / EPISODES_PER_PAGE)
+        const start = epPage * EPISODES_PER_PAGE
+        const pageEps = episodes.slice(start, start + EPISODES_PER_PAGE)
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>📺 剧集 ({episodes.length})</h3>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <button onClick={() => setEpPage(p => Math.max(0, p - 1))} disabled={epPage === 0}
+                    className="p-1 rounded hover:bg-white/10 disabled:opacity-30"><ChevronLeft size={14} /></button>
+                  <span>{epPage + 1}/{totalPages}</span>
+                  <button onClick={() => setEpPage(p => Math.min(totalPages - 1, p + 1))} disabled={epPage >= totalPages - 1}
+                    className="p-1 rounded hover:bg-white/10 disabled:opacity-30"><ChevronRight size={14} /></button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5 max-h-[200px] overflow-y-auto">
+              {pageEps.map((ep, i) => {
+                const realIdx = start + i
+                return (
+                  <button key={realIdx} onClick={() => { setActiveEp(realIdx); onEpisodeChange?.(ep) }}
+                    className="px-2 py-1.5 text-xs rounded-lg border transition-all truncate"
+                    style={{ borderColor: realIdx === activeEp ? 'var(--accent)' : 'var(--border)', color: realIdx === activeEp ? 'var(--accent)' : 'var(--text-muted)', background: realIdx === activeEp ? 'var(--accent2-dim)' : 'transparent' }}>
+                    {ep.title}</button>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
