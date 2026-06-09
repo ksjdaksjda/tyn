@@ -92,7 +92,7 @@ export const onRequestGet = async (context: any) => {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' }
     })
   } catch (e: any) {
-    return new Response(JSON.stringify({ results: [], error: e.message }), {
+    return new Response(JSON.stringify({ results: [], error: e.message, stack: e.stack }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     })
