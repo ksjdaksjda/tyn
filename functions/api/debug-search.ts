@@ -7,8 +7,7 @@ export const onRequestGet = async (context: any) => {
   // Step 1: TMDB
   try {
     const res = await fetch(
-      `https://api.themoviedb.org/3/search/movie?query=${q}&language=zh-CN`,
-      { headers: { Authorization: `Bearer ${env.TMDB_API_KEY}` } }
+      `https://api.themoviedb.org/3/search/movie?api_key=${env.TMDB_API_KEY}&query=${q}&language=zh-CN`
     )
     const data: any = await res.json()
     debug.steps.push({ api: 'tmdb', status: res.status, count: data.results?.length || 0, first: data.results?.[0]?.title || 'none' })

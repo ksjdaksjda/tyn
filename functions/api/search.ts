@@ -20,8 +20,7 @@ export const onRequestGet = async (context: any) => {
       try {
         const tmdbType = type === 'tv' ? 'tv' : type === 'movie' ? 'movie' : 'multi'
         const tmdbRes = await fetch(
-          `https://api.themoviedb.org/3/search/${tmdbType}?query=${encodeURIComponent(q)}&language=zh-CN&page=1`,
-          { headers: { Authorization: `Bearer ${apiKey}` } }
+          `https://api.themoviedb.org/3/search/${tmdbType}?api_key=${apiKey}&query=${encodeURIComponent(q)}&language=zh-CN&page=1`
         )
         const data: any = await tmdbRes.json()
         if (data.results) {
