@@ -73,6 +73,15 @@ export const onRequestGet = async (context: any) => {
             const vidTitle = item.title || item.vod_name || item.name || ''
             const vidType = (item.type_name || item.class || '').includes('动漫') ? 'anime' :
                            (item.type_name || item.class || '').includes('剧') ? 'tv' : 'movie'
+            const totalEps = episodes.length
+            const chunkSize = 75
+            const chunks = totalEps > chunkSize
+              ? Array.from({ length: Math.ceil(totalEps / chunkSize) }, (_, i) => ({
+                  label: `第${i * chunkSize + 1}-${Math.min((i + 1) * chunkSize, totalEps)}集`,
+                  episodes: episodes.slice(i * chunkSize, (i + 1) * chunkSize),
+                }))
+              : null
+
             return {
               source: 'video',
               id: `video-${item.id || item.vod_id || ''}`,
@@ -82,6 +91,8 @@ export const onRequestGet = async (context: any) => {
               coverUrl: item.poster || item.cover || item.pic || item.vod_pic || item.img,
               description: item.desc || item.description || item.vod_remarks || item.remarks,
               episodes,
+              totalEpisodes: totalEps,
+              chunks, // null if ≤75, array of {label, episodes} if >75
             }
           }))
         }
@@ -97,20 +108,33 @@ export const onRequestGet = async (context: any) => {
         const agedmData: any = await agedmRes.json()
         const animeList = agedmData?.data?.list || agedmData?.list || agedmData?.data || []
         if (Array.isArray(animeList) && animeList.length > 0) {
-          results.push(...animeList.slice(0, 20).map((item: any) => ({
-            source: 'agedm',
-            id: `agedm-${item.id || item.aid || ''}`,
-            title: item.title || item.name || '',
-            type: 'anime',
-            year: item.year ? parseInt(item.year) : undefined,
-            coverUrl: item.pic || item.cover || item.img || item.poster,
-            description: (item.desc || item.description || '').slice(0, 200),
-            genres: item.tags || item.types || [],
-            episodes: (item.playList || item.episodes || []).map((ep: any, i: number) => ({
+          results.push(...animeList.slice(0, 20).map((item: any) => {
+            const episodes = (item.playList || item.episodes || []).map((ep: any, i: number) => ({
               title: ep.title || ep.name || `第${i + 1}集`,
               url: ep.url || ep.src || ep.link || '',
-            })),
-          })))
+            }))
+            const totalEps = episodes.length
+            const chunkSize = 75
+            const chunks = totalEps > chunkSize
+              ? Array.from({ length: Math.ceil(totalEps / chunkSize) }, (_, i) => ({
+                  label: `第${i * chunkSize + 1}-${Math.min((i + 1) * chunkSize, totalEps)}集`,
+                  episodes: episodes.slice(i * chunkSize, (i + 1) * chunkSize),
+                }))
+              : null
+            return {
+              source: 'agedm',
+              id: `agedm-${item.id || item.aid || ''}`,
+              title: item.title || item.name || '',
+              type: 'anime',
+              year: item.year ? parseInt(item.year) : undefined,
+              coverUrl: item.pic || item.cover || item.img || item.poster,
+              description: (item.desc || item.description || '').slice(0, 200),
+              genres: item.tags || item.types || [],
+              episodes,
+              totalEpisodes: totalEps,
+              chunks,
+            }
+          }))
         }
       } catch (e: any) {}
     }

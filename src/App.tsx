@@ -1,5 +1,6 @@
 import { Component, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { SafePage } from './lib/safe-render'
 
 // Lazy-load all pages — reduces initial bundle execution pressure
 const MainLayout = lazy(() => import('./components/layout/MainLayout'))
