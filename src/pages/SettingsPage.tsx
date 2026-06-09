@@ -8,83 +8,85 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
 
   const saveKey = () => {
-    if (deepseekKey.trim()) {
-      localStorage.setItem('deepseek-api-key', deepseekKey.trim())
-    } else {
-      localStorage.removeItem('deepseek-api-key')
+    if (deepseekKey.trim()) { localStorage.setItem('deepseek-api-key', deepseekKey.trim()) }
+    else { localStorage.removeItem('deepseek-api-key') }
+    setSaved(true); setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleExport = () => {
+    const data = { items: JSON.parse(localStorage.getItem('treehole_items')||'[]'), reviews: JSON.parse(localStorage.getItem('treehole_reviews')||'[]') }
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+    a.download = `treehole_backup_${new Date().toISOString().slice(0,10)}.json`; a.click()
+  }
+
+  const handleImport = () => {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0]; if (!file) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string)
+          if (data.items) localStorage.setItem('treehole_items', JSON.stringify(data.items))
+          if (data.reviews) localStorage.setItem('treehole_reviews', JSON.stringify(data.reviews))
+          alert('导入成功！请刷新页面。'); window.location.reload()
+        } catch { alert('文件格式错误') }
+      }; reader.readAsText(file)
+    }; input.click()
+  }
+
+  const handleClear = () => {
+    if (confirm('确定清除全部数据？此操作不可恢复！')) {
+      localStorage.removeItem('treehole_items'); localStorage.removeItem('treehole_reviews')
+      alert('数据已清除'); window.location.reload()
     }
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-[var(--text)]">⚙️ 设置</h1>
+    <div>
+      <h1 className="section-title">⚙️ 个人中心</h1>
+      <div style={{ display:'grid', gap:14, maxWidth:700, margin:'0 auto', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))' }}>
 
-      {/* Theme */}
-      <section className="glass p-5 space-y-3">
-        <h2 className="font-semibold text-[var(--text)]">🎨 主题</h2>
-        <div className="grid grid-cols-4 gap-2">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
-              className="flex items-center gap-2 p-2 rounded-lg border transition-all text-sm"
-              style={{
-                borderColor: theme === t.id ? 'var(--accent)' : 'var(--border)',
-                background: theme === t.id ? 'var(--accent2-dim)' : 'transparent',
-              }}
-            >
-              <span
-                className="w-4 h-4 rounded-full"
-                style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})` }}
-              />
-              {t.icon} {t.name}
-            </button>
-          ))}
+        {/* Theme */}
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:18, backdropFilter:'blur(8px)' }}>
+          <h4 className="text-[0.82rem] tracking-[1px] flex items-center gap-1.5 mb-3" style={{ color:'var(--text-muted)' }}>🎨 主题预设</h4>
+          <div className="grid grid-cols-4 gap-2">
+            {THEMES.map((t) => (
+              <button key={t.id} onClick={() => setTheme(t.id)}
+                className="text-center p-2 rounded-xl border transition-all duration-200 hover:-translate-y-0.5"
+                style={{ borderColor: theme===t.id?'var(--accent)':'var(--border)', background: theme===t.id?'var(--tag-bg)':'transparent' }}>
+                <span className="block w-5 h-5 rounded-full mx-auto mb-1" style={{ background:`linear-gradient(135deg,${t.colors[0]},${t.colors[1]})` }} />
+                <span className="text-[0.65rem]" style={{ color: theme===t.id?'var(--accent)':'var(--text-muted)' }}>{t.icon} {t.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </section>
 
-      {/* DeepSeek API */}
-      <section className="glass p-5 space-y-3">
-        <h2 className="font-semibold text-[var(--text)]">🤖 DeepSeek AI 配置</h2>
-        <p className="text-xs text-[var(--text-muted)]">
-          填入你的 DeepSeek API Key 即可使用 AI 影评润色和智能推荐功能。密钥仅存储在浏览器本地，不会上传到服务器。
-          <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer" className="text-[var(--accent)] ml-1">获取 Key →</a>
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="password"
-            value={deepseekKey}
-            onChange={(e) => setDeepseekKey(e.target.value)}
-            placeholder="sk-xxxxxxxxxxxxxxxx"
-            className="flex-1 px-3 py-2 rounded-lg text-sm border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-          />
-          <button
-            onClick={saveKey}
-            className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-all"
-            style={{ background: saved ? 'var(--accent2)' : 'linear-gradient(135deg, var(--accent), var(--accent2))' }}
-          >
-            {saved ? '✅ 已保存' : '保存'}
-          </button>
+        {/* DeepSeek */}
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:18, backdropFilter:'blur(8px)' }}>
+          <h4 className="text-[0.82rem] tracking-[1px] flex items-center gap-1.5 mb-3" style={{ color:'var(--text-muted)' }}>🤖 DeepSeek AI</h4>
+          <p className="text-[0.72rem] mb-2" style={{ color:'var(--text-muted)' }}>填入密钥使用AI润色和推荐。密钥仅存本地。</p>
+          <div className="flex gap-2">
+            <input type="password" value={deepseekKey} onChange={e=>setDeepseekKey(e.target.value)} placeholder="sk-xxx"
+              className="flex-1 px-2.5 py-2 rounded-[10px] border text-[0.82rem] font-[inherit] outline-none transition-all focus:border-[var(--accent)]"
+              style={{ borderColor:'var(--border)', background:'var(--input-bg)', color:'var(--text)' }} />
+            <button onClick={saveKey} className="btn btn-primary btn-sm">{saved?'✅':'保存'}</button>
+          </div>
+          <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer"
+            className="text-[0.65rem] mt-1.5 inline-block" style={{ color:'var(--accent)' }}>获取 Key →</a>
         </div>
-      </section>
 
-      {/* Data Management */}
-      <section className="glass p-5 space-y-3">
-        <h2 className="font-semibold text-[var(--text)]">💾 数据管理</h2>
-        <div className="flex flex-wrap gap-2">
-          <button className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text)] hover:bg-white/10">
-            📤 导出数据
-          </button>
-          <button className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text)] hover:bg-white/10">
-            📥 导入数据
-          </button>
-          <button className="px-3 py-1.5 text-xs rounded-lg border border-[var(--danger)] text-[var(--danger)] hover:bg-red-50">
-            🗑 清除全部数据
-          </button>
+        {/* Data */}
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:18, backdropFilter:'blur(8px)', gridColumn:'1/-1' }}>
+          <h4 className="text-[0.82rem] tracking-[1px] flex items-center gap-1.5 mb-3" style={{ color:'var(--text-muted)' }}>💾 数据管理</h4>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={handleExport} className="btn btn-sm">📤 导出数据</button>
+            <button onClick={handleImport} className="btn btn-sm">📥 导入数据</button>
+            <button onClick={handleClear} className="btn btn-sm btn-danger">🗑 清除全部</button>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
