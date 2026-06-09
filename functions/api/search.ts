@@ -54,7 +54,7 @@ export const onRequestGet = async (context: any) => {
           headers: { Cookie: cookies }
         })
         const data: any = await searchRes.json()
-        const moontvResults = data.results || data.list || data.data || []
+        const moontvResults = data?.list || data?.results || data?.data || []
         if (moontvResults.length > 0) {
           results.push(...moontvResults.slice(0, 10).map((item: any) => {
             let episodes: any[] = []
@@ -92,7 +92,7 @@ export const onRequestGet = async (context: any) => {
     }
     results = Array.from(titleMap.values())
 
-    return new Response(JSON.stringify({ results }), {
+    return new Response(JSON.stringify({ results, _debug: { hasResults: results.length, hasVideoSource: results.some((r:any) => (r.episodes?.length||0) > 0), sources: [...new Set(results.map((r:any)=>r.source))] } }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' }
     })
   } catch (e: any) {
