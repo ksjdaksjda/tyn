@@ -78,14 +78,18 @@ export const onRequestGet = async (context: any) => {
       } catch (e: any) {}
     }
 
-    // Deduplicate by title
-    const seen = new Set<string>()
-    results = results.filter(r => {
+    // Deduplicate by title — prefer results with episodes (video sources)
+    const titleMap = new Map<string, any>()
+    for (const r of results) {
       const key = r.title?.toLowerCase().replace(/\s+/g, '')
-      if (!key || seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
+      if (!key) continue
+      const existing = titleMap.get(key)
+      // Keep the one with episodes, or the first one
+      if (!existing || (r.episodes?.length > 0 && !existing.episodes?.length)) {
+        titleMap.set(key, r)
+      }
+    }
+    results = Array.from(titleMap.values())
 
     return new Response(JSON.stringify({ results }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' }
