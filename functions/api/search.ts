@@ -14,6 +14,7 @@ export const onRequestGet = async (context: any) => {
     }
 
     let results: any[] = []
+    let moontvDebug: any = null
 
     // TMDB search
     if (apiKey && (type === 'all' || type === 'movie' || type === 'tv')) {
@@ -56,6 +57,7 @@ export const onRequestGet = async (context: any) => {
         const data: any = await searchRes.json()
         const moontvResults = data?.list || data?.results || data?.data || []
         if (moontvResults.length > 0) {
+          moontvDebug = { count: moontvResults.length, firstKeys: Object.keys(moontvResults[0]||{}), firstTitle: moontvResults[0]?.vod_name || moontvResults[0]?.title, firstId: moontvResults[0]?.vod_id, hasPlayUrl: !!moontvResults[0]?.vod_play_url }
           results.push(...moontvResults.slice(0, 10).map((item: any) => {
             let episodes: any[] = []
             if (item.vod_play_url) {
@@ -64,14 +66,15 @@ export const onRequestGet = async (context: any) => {
                 return { title: label, url: u }
               })
             }
+            const vidTitle = item.vod_name || item.title || item.name || ''
             return {
               source: 'video',
-              id: `video-${item.vod_id}`,
-              title: item.vod_name,
+              id: `video-${item.vod_id || ''}`,
+              title: vidTitle,
               type: (item.type_name || '').includes('动漫') ? 'anime' : (item.type_name || '').includes('剧') ? 'tv' : 'movie',
               year: item.vod_year ? parseInt(item.vod_year) : undefined,
-              coverUrl: item.vod_pic,
-              description: item.vod_remarks,
+              coverUrl: item.vod_pic || item.pic || item.cover || item.img,
+              description: item.vod_remarks || item.remarks || item.description,
               episodes,
             }
           }))
@@ -92,7 +95,7 @@ export const onRequestGet = async (context: any) => {
     }
     results = Array.from(titleMap.values())
 
-    return new Response(JSON.stringify({ results, _debug: { hasResults: results.length, hasVideoSource: results.some((r:any) => (r.episodes?.length||0) > 0), sources: [...new Set(results.map((r:any)=>r.source))] } }), {
+    return new Response(JSON.stringify({ results, _debug: { total: results.length, hasVideo: results.some((r:any)=>(r.episodes?.length||0)>0), sources: [...new Set(results.map((r:any)=>r.source))], moontv: moontvDebug } }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' }
     })
   } catch (e: any) {
