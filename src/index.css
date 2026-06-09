@@ -1,0 +1,296 @@
+@import 'tailwindcss';
+
+/* ===== 8 Nature Theme Variables ===== */
+:root {
+  --font-sans: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+}
+
+/* Ocean 海洋 (default) */
+[data-theme="ocean"] {
+  --bg: linear-gradient(135deg, #e8f4f8 0%, #d4edf5 50%, #e0f0f0 100%);
+  --bg-card: rgba(255, 255, 255, 0.65);
+  --bg-card-hover: rgba(255, 255, 255, 0.85);
+  --text: #2c3e50;
+  --text-muted: #5a7a8a;
+  --accent: #2a9db8;
+  --accent-bright: #33b5d0;
+  --accent2: #5cc0a0;
+  --accent2-dim: rgba(92, 192, 160, 0.15);
+  --danger: #e06060;
+  --border: rgba(180, 210, 220, 0.5);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --glow: 0 0 20px rgba(42, 157, 184, 0.15);
+  --overlay: rgba(0, 0, 0, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --tag-bg: rgba(42, 157, 184, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.55);
+  --modal-bg: rgba(255, 255, 255, 0.9);
+  --star-color: #f0b050;
+  --shelf-wood: #c4956a;
+  --shelf-dark: #a07050;
+}
+
+/* Spring 春樱 */
+[data-theme="spring"] {
+  --bg: linear-gradient(135deg, #fef0f4 0%, #fde4ec 50%, #fef5f0 100%);
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-card-hover: rgba(255, 255, 255, 0.8);
+  --text: #4a3040;
+  --text-muted: #8a6070;
+  --accent: #d87898;
+  --accent-bright: #e890a8;
+  --accent2: #c8a86a;
+  --accent2-dim: rgba(200, 168, 106, 0.15);
+  --danger: #d06060;
+  --border: rgba(220, 180, 190, 0.5);
+  --shadow: 0 4px 24px rgba(120, 60, 80, 0.08);
+  --glow: 0 0 20px rgba(216, 120, 152, 0.15);
+  --overlay: rgba(80, 30, 40, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --tag-bg: rgba(216, 120, 152, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.5);
+  --modal-bg: rgba(255, 255, 255, 0.9);
+  --star-color: #f0a040;
+  --shelf-wood: #d4a878;
+  --shelf-dark: #b08060;
+}
+
+/* Starry 星空 */
+[data-theme="starry"] {
+  --bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+  --bg-card: rgba(30, 30, 60, 0.7);
+  --bg-card-hover: rgba(40, 40, 80, 0.85);
+  --text: #c8d0e0;
+  --text-muted: #7888a8;
+  --accent: #a080e0;
+  --accent-bright: #b898f0;
+  --accent2: #60a0d8;
+  --accent2-dim: rgba(96, 160, 216, 0.2);
+  --danger: #e06070;
+  --border: rgba(80, 80, 140, 0.4);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --glow: 0 0 30px rgba(160, 128, 224, 0.2);
+  --overlay: rgba(0, 0, 0, 0.5);
+  --input-bg: rgba(40, 40, 70, 0.6);
+  --tag-bg: rgba(160, 128, 224, 0.2);
+  --nav-bg: rgba(20, 20, 50, 0.7);
+  --modal-bg: rgba(30, 30, 60, 0.95);
+  --star-color: #f0c040;
+  --shelf-wood: #6a5a8a;
+  --shelf-dark: #4a3a6a;
+}
+
+/* Dusk 日落 */
+[data-theme="dusk"] {
+  --bg: linear-gradient(135deg, #fef5ed 0%, #fde8d8 50%, #fdf0e8 100%);
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-card-hover: rgba(255, 255, 255, 0.8);
+  --text: #4a3028;
+  --text-muted: #8a6050;
+  --accent: #c88040;
+  --accent-bright: #e09050;
+  --accent2: #d87860;
+  --accent2-dim: rgba(216, 120, 96, 0.15);
+  --danger: #c05050;
+  --border: rgba(200, 160, 140, 0.5);
+  --shadow: 0 4px 24px rgba(80, 40, 20, 0.08);
+  --glow: 0 0 20px rgba(200, 128, 64, 0.15);
+  --overlay: rgba(60, 30, 20, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --tag-bg: rgba(200, 128, 64, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.5);
+  --modal-bg: rgba(255, 255, 255, 0.9);
+  --star-color: #f0a040;
+  --shelf-wood: #c49870;
+  --shelf-dark: #a07050;
+}
+
+/* Forest 森林 */
+[data-theme="forest"] {
+  --bg: linear-gradient(135deg, #edf5e8 0%, #e0f0d8 50%, #eaf5e5 100%);
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-card-hover: rgba(255, 255, 255, 0.8);
+  --text: #2a3a28;
+  --text-muted: #5a7a50;
+  --accent: #4a8a3a;
+  --accent-bright: #5aa048;
+  --accent2: #8a9a40;
+  --accent2-dim: rgba(138, 154, 64, 0.15);
+  --danger: #c05050;
+  --border: rgba(140, 180, 130, 0.5);
+  --shadow: 0 4px 24px rgba(30, 50, 20, 0.08);
+  --glow: 0 0 20px rgba(74, 138, 58, 0.15);
+  --overlay: rgba(20, 40, 20, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --tag-bg: rgba(74, 138, 58, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.5);
+  --modal-bg: rgba(255, 255, 255, 0.9);
+  --star-color: #e0b040;
+  --shelf-wood: #8a9a60;
+  --shelf-dark: #6a7a40;
+}
+
+/* Rain 静雨 */
+[data-theme="rain"] {
+  --bg: linear-gradient(135deg, #e8edf2 0%, #dce4ec 50%, #e4eaf0 100%);
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-card-hover: rgba(255, 255, 255, 0.8);
+  --text: #2a3848;
+  --text-muted: #587088;
+  --accent: #4878a0;
+  --accent-bright: #5890b8;
+  --accent2: #7088a8;
+  --accent2-dim: rgba(112, 136, 168, 0.15);
+  --danger: #c05868;
+  --border: rgba(150, 170, 190, 0.5);
+  --shadow: 0 4px 24px rgba(30, 40, 60, 0.08);
+  --glow: 0 0 20px rgba(72, 120, 160, 0.15);
+  --overlay: rgba(20, 30, 50, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --tag-bg: rgba(72, 120, 160, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.5);
+  --modal-bg: rgba(255, 255, 255, 0.9);
+  --star-color: #e0a840;
+  --shelf-wood: #8898a0;
+  --shelf-dark: #687888;
+}
+
+/* Autumn 秋枫 */
+[data-theme="autumn"] {
+  --bg: linear-gradient(135deg, #fdf0e8 0%, #fae0c8 50%, #fce8d8 100%);
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-card-hover: rgba(255, 255, 255, 0.8);
+  --text: #4a3020;
+  --text-muted: #8a6040;
+  --accent: #c87830;
+  --accent-bright: #e08840;
+  --accent2: #a86840;
+  --accent2-dim: rgba(168, 104, 64, 0.15);
+  --danger: #c05040;
+  --border: rgba(200, 160, 120, 0.5);
+  --shadow: 0 4px 24px rgba(80, 40, 20, 0.08);
+  --glow: 0 0 20px rgba(200, 120, 48, 0.15);
+  --overlay: rgba(60, 30, 20, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --tag-bg: rgba(200, 120, 48, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.5);
+  --modal-bg: rgba(255, 255, 255, 0.9);
+  --star-color: #e09840;
+  --shelf-wood: #c49870;
+  --shelf-dark: #a07050;
+}
+
+/* Polar 极光 */
+[data-theme="polar"] {
+  --bg: linear-gradient(135deg, #f0f4f8 0%, #e0eaf4 50%, #e8f0f8 100%);
+  --bg-card: rgba(255, 255, 255, 0.65);
+  --bg-card-hover: rgba(255, 255, 255, 0.85);
+  --text: #2a3848;
+  --text-muted: #607888;
+  --accent: #5888b0;
+  --accent-bright: #6898c0;
+  --accent2: #7898b8;
+  --accent2-dim: rgba(120, 152, 184, 0.15);
+  --danger: #c05860;
+  --border: rgba(160, 180, 200, 0.5);
+  --shadow: 0 4px 24px rgba(30, 40, 60, 0.08);
+  --glow: 0 0 20px rgba(88, 136, 176, 0.15);
+  --overlay: rgba(20, 30, 50, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.7);
+  --tag-bg: rgba(88, 136, 176, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.55);
+  --modal-bg: rgba(255, 255, 255, 0.9);
+  --star-color: #e0a840;
+  --shelf-wood: #8898a8;
+  --shelf-dark: #687888;
+}
+
+/* ===== Base Styles ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.5s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Glass morphism utility */
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.glass-hover:hover {
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow), var(--glow);
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: pageIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Shimmer text effect */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.text-shimmer {
+  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

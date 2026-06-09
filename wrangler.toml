@@ -1,0 +1,25 @@
+name = "movie-tracker"
+compatibility_date = "2025-06-08"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# D1 Database (create with: wrangler d1 create movie-tracker-db)
+[[d1_databases]]
+binding = "DB"
+database_name = "movie-tracker-db"
+database_id = ""
+
+# Environment variables (set secrets with: wrangler secret put <NAME>)
+[vars]
+TMDB_API_KEY = ""
+ALLOWED_ORIGINS = "*"
+
+# Better Auth env
+[env.production.vars]
+BETTER_AUTH_URL = ""
+GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_SECRET = ""
+
+# Dev environment
+[dev]
+port = 8788
