@@ -44,6 +44,8 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
           enableWorker: false,
           maxBufferLength: 30,
           maxMaxBufferLength: 60,
+          enableWebVTT: false,
+          renderTextTracksNatively: false,
         })
         hls.loadSource(src)
         hls.attachMedia(video)
@@ -72,7 +74,10 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
       }
 
       const onReady = () => {
-        if (!destroyed) setLoading(false)
+        if (!destroyed) {
+          setLoading(false)
+          setError('') // 直连播放成功时清除错误提示，避免遮挡画面
+        }
       }
       const onErr = () => {
         if (!destroyed) {
@@ -117,7 +122,27 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
 
   const togglePlay = () => { const v = videoRef.current; if (v) v.paused ? v.play().catch(()=>{}) : v.pause() }
   const toggleMute = () => { const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted) } }
-  const toggleFS = () => videoRef.current?.closest('.player-container')?.requestFullscreen?.()
+  const toggleFS = () => {
+    const video = videoRef.current
+    if (!video) return
+    // iOS Safari 只支持 video 元素全屏
+    const vAny = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void; webkitExitFullscreen?: () => void; webkitDisplayingFullscreen?: boolean }
+    if (vAny.webkitEnterFullscreen) {
+      if (vAny.webkitDisplayingFullscreen) {
+        vAny.webkitExitFullscreen?.()
+      } else {
+        vAny.webkitEnterFullscreen()
+      }
+      return
+    }
+    // Android / Desktop: 对容器请求全屏
+    const container = video.closest('.player-container')
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.()
+    } else {
+      container?.requestFullscreen?.()
+    }
+  }
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
     const v = videoRef.current; if (!v || !duration) return
     const rect = e.currentTarget.getBoundingClientRect()
@@ -137,9 +162,9 @@ export default function VideoPlayer({ src, episodes, title, poster, onEpisodeCha
         )}
 
         {error && !loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 flex-col gap-2">
-            <p className="text-white text-sm">{error}</p>
-            {onError && <button onClick={onError} className="px-3 py-1 bg-white/20 text-white text-xs rounded">切换直连</button>}
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between gap-2 px-3 py-1.5 bg-black/70 z-10" style={{ pointerEvents: 'auto' }}>
+            <p className="text-white text-xs truncate flex-1">{error}</p>
+            {onError && <button onClick={onError} className="px-3 py-1 bg-white/20 text-white text-xs rounded whitespace-nowrap">切换直连</button>}
           </div>
         )}
 
