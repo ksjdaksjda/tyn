@@ -30,7 +30,7 @@ export default function ImportPage() {
       director: result.director,
       genres: result.genres,
       author: result.author,
-      playUrls: episodes.length > 0 ? [{ name: '默认源', episodes }] : undefined,
+      playUrls: episodes.length > 0 ? [{ name: '默认源', episodes, fetchedAt: Date.now() }] : undefined,
       status: 'want',
     }, {
       onSuccess: () => {

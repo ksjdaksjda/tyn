@@ -56,12 +56,12 @@ export const onRequestPost = async (context: any) => {
       author, publisher, page_count, play_urls, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    id, userId, body.title, body.originalTitle, body.type, body.year, body.coverUrl,
-    body.backdropUrl, body.description, body.director, JSON.stringify(body.cast),
-    JSON.stringify(body.genres), body.country, body.language,
-    body.runtime, body.rating || 0, body.tmdbId, body.doubanId,
-    body.status || 'want', body.watchDate, body.notes, JSON.stringify(body.tags),
-    body.author, body.publisher, body.pageCount, JSON.stringify(body.playUrls), now, now,
+    id, userId, body.title ?? '', body.originalTitle ?? null, body.type, body.year ?? null, body.coverUrl ?? null,
+    body.backdropUrl ?? null, body.description ?? null, body.director ?? null, JSON.stringify(body.cast ?? null),
+    JSON.stringify(body.genres ?? null), body.country ?? null, body.language ?? null,
+    body.runtime ?? null, body.rating || 0, body.tmdbId ?? null, body.doubanId ?? null,
+    body.status || 'want', body.watchDate ?? null, body.notes ?? null, JSON.stringify(body.tags ?? null),
+    body.author ?? null, body.publisher ?? null, body.pageCount ?? null, JSON.stringify(body.playUrls ?? null), now, now,
   ).run()
 
   return new Response(JSON.stringify({ id }), {

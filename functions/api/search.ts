@@ -1,4 +1,5 @@
-// API: /api/search — TMDB search proxy
+// API: /api/search — aggregated search (TMDB metadata + moontv + agedm video sources)
+// Sources run in parallel; results are cached for 30 min; moontv login cookie is cached 10 min.
 export const onRequestGet = async (context: any) => {
   try {
     const { request, env } = context
@@ -13,94 +14,108 @@ export const onRequestGet = async (context: any) => {
       })
     }
 
-    let results: any[] = []
+    // ---- Cache: 30 min for non-empty results ----
+    const cache = caches.default
+    const cacheKey = new Request(`https://search-cache.local/${encodeURIComponent(type)}/${encodeURIComponent(q.toLowerCase().trim())}`)
+    const cached = await cache.match(cacheKey)
+    if (cached) return cached
 
-    // TMDB search
-    if (apiKey && (type === 'all' || type === 'movie' || type === 'tv')) {
-      try {
-        const tmdbType = type === 'tv' ? 'tv' : type === 'movie' ? 'movie' : 'multi'
-        const tmdbRes = await fetch(
-          `https://api.themoviedb.org/3/search/${tmdbType}?api_key=${apiKey}&query=${encodeURIComponent(q)}&language=zh-CN&page=1`
-        )
-        const data: any = await tmdbRes.json()
-        if (data.results) {
-          results.push(...data.results.slice(0, 10).map((item: any) => ({
-            source: 'tmdb',
-            id: `tmdb-${item.id}`,
-            title: item.title || item.name || '',
-            originalTitle: item.original_title || item.original_name || '',
-            type: item.media_type === 'tv' ? 'tv' : 'movie',
-            year: item.release_date ? new Date(item.release_date).getFullYear() : item.first_air_date ? new Date(item.first_air_date).getFullYear() : undefined,
-            coverUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : undefined,
-            description: item.overview?.slice(0, 200),
-            rating: item.vote_average ? Math.round(item.vote_average * 10) / 10 : undefined,
-          })))
-        }
-      } catch (e: any) {}
+    const searchTmdb = async () => {
+      if (!apiKey || (type !== 'all' && type !== 'movie' && type !== 'tv')) return []
+      const tmdbType = type === 'tv' ? 'tv' : type === 'movie' ? 'movie' : 'multi'
+      const tmdbRes = await fetch(
+        `https://api.themoviedb.org/3/search/${tmdbType}?api_key=${apiKey}&query=${encodeURIComponent(q)}&language=zh-CN&page=1`
+      )
+      const data: any = await tmdbRes.json()
+      if (!data.results) return []
+      return data.results.slice(0, 10).map((item: any) => ({
+        source: 'tmdb',
+        id: `tmdb-${item.id}`,
+        title: item.title || item.name || '',
+        originalTitle: item.original_title || item.original_name || '',
+        type: item.media_type === 'tv' ? 'tv' : 'movie',
+        year: item.release_date ? new Date(item.release_date).getFullYear() : item.first_air_date ? new Date(item.first_air_date).getFullYear() : undefined,
+        coverUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : undefined,
+        description: item.overview?.slice(0, 200),
+        rating: item.vote_average ? Math.round(item.vote_average * 10) / 10 : undefined,
+      }))
     }
 
-    // Video source search (moontv)
-    if (type === 'all' || type === 'movie' || type === 'tv') {
-      try {
-        const upUser = env.MOONTV_USER || ''
-        const upPass = env.MOONTV_PASS || ''
+    const searchMoontv = async () => {
+      if (type !== 'all' && type !== 'movie' && type !== 'tv') return []
+      const upUser = env.MOONTV_USER || ''
+      const upPass = env.MOONTV_PASS || ''
+
+      // Cached login cookie (10 min) — re-login on 401/empty
+      const cookieKey = new Request(`https://moontv-cookie.local/${encodeURIComponent(upUser)}`)
+      let cookies = (await cache.match(cookieKey))?.headers.get('cookie-value') || ''
+      let searchRes: Response | null = null
+      if (cookies) {
+        searchRes = await fetch(`https://moontv.022340618.xyz/api/search?q=${encodeURIComponent(q)}`, {
+          headers: { Cookie: cookies }
+        })
+      }
+      if (!searchRes || searchRes.status === 401) {
         const loginRes = await fetch('https://moontv.022340618.xyz/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: upUser, password: upPass })
         })
-        const cookies = loginRes.headers.get('set-cookie') || ''
-        const searchRes = await fetch(`https://moontv.022340618.xyz/api/search?q=${encodeURIComponent(q)}`, {
+        cookies = loginRes.headers.get('set-cookie') || ''
+        if (cookies) {
+          context.waitUntil(cache.put(cookieKey, new Response(null, { headers: { 'cookie-value': cookies } }), { expirationTtl: 600 }))
+        }
+        searchRes = await fetch(`https://moontv.022340618.xyz/api/search?q=${encodeURIComponent(q)}`, {
           headers: { Cookie: cookies }
         })
-        const data: any = await searchRes.json()
-        const moontvResults = data?.list || data?.results || data?.data || []
-        if (moontvResults.length > 0) {
-          results.push(...moontvResults.slice(0, 10).map((item: any) => {
-            // moontv new API format: title, poster, episodes[], source, year, desc, type_name, douban_id
-            let episodes: {title:string,url:string}[] = []
-            if (Array.isArray(item.episodes)) {
-              episodes = item.episodes.map((ep: any, i: number) => {
-                if (typeof ep === 'string') return { title: `第${i+1}集`, url: ep }
-                return { title: ep.title || ep.name || `第${i+1}集`, url: ep.url || ep }
-              })
-            } else if (item.vod_play_url) {
-              episodes = item.vod_play_url.split('$$$').map((part: string) => {
-                const [label, u] = part.includes('$') ? part.split('$') : [part, part]
-                return { title: label, url: u }
-              })
-            }
-            const vidTitle = item.title || item.vod_name || item.name || ''
-            const vidType = (item.type_name || item.class || '').includes('动漫') ? 'anime' :
-                           (item.type_name || item.class || '').includes('剧') ? 'tv' : 'movie'
-            const totalEps = episodes.length
-            const chunkSize = 75
-            const chunks = totalEps > chunkSize
-              ? Array.from({ length: Math.ceil(totalEps / chunkSize) }, (_, i) => ({
-                  label: `第${i * chunkSize + 1}-${Math.min((i + 1) * chunkSize, totalEps)}集`,
-                  episodes: episodes.slice(i * chunkSize, (i + 1) * chunkSize),
-                }))
-              : null
+      }
 
-            return {
-              source: 'video',
-              id: `video-${item.id || item.vod_id || ''}`,
-              title: vidTitle,
-              type: vidType,
-              year: item.year || (item.vod_year ? parseInt(item.vod_year) : undefined),
-              coverUrl: item.poster || item.cover || item.pic || item.vod_pic || item.img,
-              description: item.desc || item.description || item.vod_remarks || item.remarks,
-              episodes,
-              totalEpisodes: totalEps,
-              chunks, // null if ≤75, array of {label, episodes} if >75
-            }
-          }))
+      const data: any = await searchRes.json()
+      const moontvResults = data?.list || data?.results || data?.data || []
+      if (moontvResults.length === 0) return []
+      return moontvResults.slice(0, 10).map((item: any) => {
+        // moontv new API format: title, poster, episodes[], source, year, desc, type_name, douban_id
+        let episodes: {title:string,url:string}[] = []
+        if (Array.isArray(item.episodes)) {
+          episodes = item.episodes.map((ep: any, i: number) => {
+            if (typeof ep === 'string') return { title: `第${i+1}集`, url: ep }
+            return { title: ep.title || ep.name || `第${i+1}集`, url: ep.url || ep }
+          })
+        } else if (item.vod_play_url) {
+          episodes = item.vod_play_url.split('$$$').map((part: string) => {
+            const [label, u] = part.includes('$') ? part.split('$') : [part, part]
+            return { title: label, url: u }
+          })
         }
-      } catch (e: any) {}
+        const vidTitle = item.title || item.vod_name || item.name || ''
+        const vidType = (item.type_name || item.class || '').includes('动漫') ? 'anime' :
+                       (item.type_name || item.class || '').includes('剧') ? 'tv' : 'movie'
+        const totalEps = episodes.length
+        const chunkSize = 75
+        const chunks = totalEps > chunkSize
+          ? Array.from({ length: Math.ceil(totalEps / chunkSize) }, (_, i) => ({
+              label: `第${i * chunkSize + 1}-${Math.min((i + 1) * chunkSize, totalEps)}集`,
+              episodes: episodes.slice(i * chunkSize, (i + 1) * chunkSize),
+            }))
+          : null
+
+        return {
+          source: 'video',
+          id: `video-${item.id || item.vod_id || ''}`,
+          title: vidTitle,
+          type: vidType,
+          year: item.year || (item.vod_year ? parseInt(item.vod_year) : undefined),
+          coverUrl: item.poster || item.cover || item.pic || item.vod_pic || item.img,
+          description: item.desc || item.description || item.vod_remarks || item.remarks,
+          episodes,
+          totalEpisodes: totalEps,
+          chunks, // null if ≤75, array of {label, episodes} if >75
+        }
+      })
     }
 
-    // Anime source search (agedm.io — try multiple API patterns)
-    if (type === 'all' || type === 'movie' || type === 'tv' || type === 'anime') {
+    const searchAgedm = async () => {
+      if (type !== 'all' && type !== 'movie' && type !== 'tv' && type !== 'anime') return []
       const apiPatterns = [
         `https://m.agedm.io/api/search?keyword=${encodeURIComponent(q)}`,
         `https://m.agedm.io/api/v1/search?keyword=${encodeURIComponent(q)}`,
@@ -117,7 +132,7 @@ export const onRequestGet = async (context: any) => {
           const animeList = agedmData?.data?.list || agedmData?.data?.results || agedmData?.data
             || agedmData?.list || agedmData?.results || agedmData || []
           if (Array.isArray(animeList) && animeList.length > 0) {
-            results.push(...animeList.slice(0, 20).map((item: any) => {
+            return animeList.slice(0, 20).map((item: any) => {
               const episodes = (item.playList || item.episodes || item.list || []).map((ep: any, i: number) => ({
                 title: ep.title || ep.name || `第${i + 1}集`,
                 url: ep.url || ep.src || ep.link || ep.playUrl || '',
@@ -136,11 +151,18 @@ export const onRequestGet = async (context: any) => {
                 totalEpisodes: totalEps > 0 ? totalEps : episodes.length,
                 chunks: null,
               }
-            }))
-            break // Found results, stop trying other patterns
+            })
           }
         } catch (e: any) { /* continue to next pattern */ }
       }
+      return []
+    }
+
+    // Run the three sources in parallel
+    const settled = await Promise.allSettled([searchTmdb(), searchMoontv(), searchAgedm()])
+    let results: any[] = []
+    for (const s of settled) {
+      if (s.status === 'fulfilled' && Array.isArray(s.value)) results.push(...s.value)
     }
 
     // Deduplicate by title — prefer results with episodes (video sources)
@@ -156,9 +178,14 @@ export const onRequestGet = async (context: any) => {
     }
     results = Array.from(titleMap.values())
 
-    return new Response(JSON.stringify({ results }), {
+    const response = new Response(JSON.stringify({ results }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' }
     })
+    // Only cache non-empty results (30 min) — empty results/errors never cached
+    if (results.length > 0) {
+      context.waitUntil(cache.put(cacheKey, response.clone(), { expirationTtl: 1800 }))
+    }
+    return response
   } catch (e: any) {
     return new Response(JSON.stringify({ results: [], error: e.message, stack: e.stack }), {
       status: 500,

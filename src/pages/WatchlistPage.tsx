@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMovies, useDeleteMovie } from '@/hooks/useMovies'
+import { useMovies, useDeleteMovie, useUpdateMovie } from '@/hooks/useMovies'
 import MovieGrid from '@/components/movie/MovieGrid'
 import MovieForm from '@/components/movie/MovieForm'
 import type { MovieItem } from '@/types'
@@ -7,6 +7,7 @@ import type { MovieItem } from '@/types'
 export default function WatchlistPage() {
   const { data } = useMovies({ status: 'want' })
   const deleteMovie = useDeleteMovie()
+  const updateMovie = useUpdateMovie()
   const [editingItem, setEditingItem] = useState<MovieItem | undefined>()
   const [showForm, setShowForm] = useState(false)
 
@@ -27,7 +28,11 @@ export default function WatchlistPage() {
       <MovieForm
         open={showForm}
         onClose={() => { setShowForm(false); setEditingItem(undefined) }}
-        onSubmit={() => { setShowForm(false); setEditingItem(undefined) }}
+        onSubmit={(data) => {
+          if (editingItem) updateMovie.mutate({ id: editingItem.id, ...data })
+          setShowForm(false)
+          setEditingItem(undefined)
+        }}
         initialData={editingItem}
       />
     </div>

@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { Play, BookOpen, Edit3, Trash2 } from 'lucide-react'
+import { Play, BookOpen, Edit3, Trash2, RefreshCw } from 'lucide-react'
 import type { MovieItem } from '@/types'
 import StarRating from './StarRating'
+import { useRefetchSources } from '@/hooks/useImport'
 
 interface MovieCardProps {
   item: MovieItem
@@ -12,6 +13,7 @@ interface MovieCardProps {
 export default function MovieCard({ item, onEdit, onDelete }: MovieCardProps) {
   const navigate = useNavigate()
   const isBook = item.type === 'book'
+  const refetchSources = useRefetchSources()
 
   const statusLabel: Record<string, string> = {
     want: '想看', watching: '在看', watched: '已看', paused: '暂停', dropped: '弃了'
@@ -136,6 +138,20 @@ export default function MovieCard({ item, onEdit, onDelete }: MovieCardProps) {
             style={{ color: 'var(--text-muted)' }}>
             <Edit3 size={10} className="inline mr-0.5" />编辑
           </button>
+          {!isBook && (
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                refetchSources.mutate(item, {
+                  onError: (err: any) => alert(err?.message || '换源失败'),
+                })
+              }}
+              disabled={refetchSources.isPending}
+              className="px-2 py-1 text-[0.65rem] rounded-md border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] transition-all duration-200 disabled:opacity-50"
+              style={{ color: 'var(--text-muted)' }}>
+              <RefreshCw size={10} className={`inline mr-0.5 ${refetchSources.isPending ? 'animate-spin' : ''}`} />换源
+            </button>
+          )}
           <button onClick={e => { e.stopPropagation(); onDelete?.(item.id) }}
             className="px-2 py-1 text-[0.65rem] rounded-md border border-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all duration-200 ml-auto"
             style={{ color: 'var(--danger)' }}>

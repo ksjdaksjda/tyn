@@ -47,7 +47,9 @@ export default function MovieForm({ open, onClose, onSubmit, initialData }: Movi
     onSubmit({ title:title.trim(), type, status, rating, year:year?parseInt(year):undefined, director:director.trim()||undefined,
       author:author.trim()||undefined, coverUrl:coverUrl.trim()||undefined, description:description.trim()||undefined,
       tags:tags.split(/[,，、]/).map(t=>t.trim()).filter(Boolean), genres:genres.split(/[,，、]/).map(t=>t.trim()).filter(Boolean),
-      watchDate:watchDate||undefined })
+      watchDate:watchDate||undefined,
+      // Editing must never be a channel for clearing play sources
+      ...(initialData?.playUrls ? { playUrls: initialData.playUrls } : {}) })
   }
 
   const inputClass = "w-full px-2.5 py-2 rounded-[10px] border text-[0.85rem] font-[inherit] outline-none transition-all duration-[0.3s] focus:border-[var(--accent)] focus:shadow-[0_0_12px_var(--shadow)]"

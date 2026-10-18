@@ -1,16 +1,22 @@
 // API: /api/proxy/segment — TS segment proxy
+import { guardProxyRequest } from './guard'
+
 export const onRequestGet = async (context: any) => {
   const url = new URL(context.request.url)
   const targetUrl = url.searchParams.get('url')
   if (!targetUrl) return new Response('Missing url', { status: 400 })
 
+  const guard = guardProxyRequest(context.request, context.env)
+  if (guard) return guard
+
   const cache = caches.default
   const cached = await cache.match(new Request(targetUrl))
   if (cached) return cached
 
-  const fetchOpts = [
+  const fetchOpts: { Referer?: string; Origin?: string }[] = [
     { Referer: 'https://vip.dytt-film.com/', Origin: 'https://vip.dytt-film.com' },
     { Referer: 'https://moontv.022340618.xyz/', Origin: 'https://moontv.022340618.xyz' },
+    { Referer: 'https://m.agedm.io/', Origin: 'https://m.agedm.io' },
     {},
   ]
 

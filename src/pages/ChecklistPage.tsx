@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMovies, useUpdateStatus, useDeleteMovie } from '@/hooks/useMovies'
+import { useMovies, useUpdateStatus, useDeleteMovie, useUpdateMovie } from '@/hooks/useMovies'
 import { Edit3, Trash2 } from 'lucide-react'
 import StarRating from '@/components/movie/StarRating'
 import MovieForm from '@/components/movie/MovieForm'
@@ -14,6 +14,7 @@ export default function ChecklistPage() {
   const { data } = useMovies()
   const updateStatus = useUpdateStatus()
   const deleteMovie = useDeleteMovie()
+  const updateMovie = useUpdateMovie()
   const [editingItem, setEditingItem] = useState<MovieItem | undefined>()
   const [showForm, setShowForm] = useState(false)
   const [sortBy, setSortBy] = useState<'date' | 'rating' | 'title'>('date')
@@ -99,7 +100,11 @@ export default function ChecklistPage() {
       </div>
 
       <MovieForm open={showForm} onClose={() => { setShowForm(false); setEditingItem(undefined) }}
-        onSubmit={() => { setShowForm(false); setEditingItem(undefined) }} initialData={editingItem} />
+        onSubmit={(data) => {
+          if (editingItem) updateMovie.mutate({ id: editingItem.id, ...data })
+          setShowForm(false)
+          setEditingItem(undefined)
+        }} initialData={editingItem} />
     </div>
   )
 }

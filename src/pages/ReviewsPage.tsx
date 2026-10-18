@@ -101,7 +101,7 @@ export default function ReviewsPage() {
             <p className="text-sm mt-2">选择一部作品，记录你的观影感受吧</p>
           </div>
         ) : (
-          reviews.map(review => (
+          reviews.map((review: any) => (
             <ReviewCard
               key={review.id}
               review={review}

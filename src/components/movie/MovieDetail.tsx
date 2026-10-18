@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
-import { X, Play, BookOpen, Edit3, Trash2, Clock, Tag, Globe, Star } from 'lucide-react'
+import { X, Play, BookOpen, Edit3, Trash2, Clock, Tag, Globe, Star, RefreshCw } from 'lucide-react'
 import type { MovieItem } from '@/types'
 import StarRating from './StarRating'
 import StatusBadge from './StatusBadge'
 import { cn } from '@/lib/utils'
+import { useRefetchSources } from '@/hooks/useImport'
 
 interface MovieDetailProps {
   item: MovieItem
@@ -15,6 +16,7 @@ interface MovieDetailProps {
 
 export default function MovieDetail({ item, open, onClose, onEdit, onDelete }: MovieDetailProps) {
   const navigate = useNavigate()
+  const refetchSources = useRefetchSources()
   if (!open) return null
 
   const isBook = item.type === 'book'
@@ -109,6 +111,14 @@ export default function MovieDetail({ item, open, onClose, onEdit, onDelete }: M
           <button onClick={() => onEdit?.(item)} className="flex items-center gap-1 px-3 py-2 rounded-lg border border-[var(--border)] text-sm text-[var(--text)]">
             <Edit3 size={14} /> 编辑
           </button>
+          {!isBook && (
+            <button
+              onClick={() => refetchSources.mutate(item, { onError: (err: any) => alert(err?.message || '换源失败') })}
+              disabled={refetchSources.isPending}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg border border-[var(--border)] text-sm text-[var(--text-muted)] disabled:opacity-50">
+              <RefreshCw size={14} className={refetchSources.isPending ? 'animate-spin' : ''} /> 换源
+            </button>
+          )}
           <button onClick={() => onDelete?.(item.id)} className="flex items-center gap-1 px-3 py-2 rounded-lg border border-[var(--danger)] text-sm text-[var(--danger)]">
             <Trash2 size={14} /> 删除
           </button>

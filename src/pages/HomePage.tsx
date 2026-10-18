@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Star } from 'lucide-react'
-import { useMovies, useCreateMovie, useDeleteMovie } from '@/hooks/useMovies'
+import { useMovies, useCreateMovie, useDeleteMovie, useUpdateMovie } from '@/hooks/useMovies'
 import MovieGrid from '@/components/movie/MovieGrid'
 import MovieForm from '@/components/movie/MovieForm'
 import type { MovieItem } from '@/types'
@@ -11,6 +11,7 @@ export default function HomePage() {
   const { data } = useMovies()
   const createMovie = useCreateMovie()
   const deleteMovie = useDeleteMovie()
+  const updateMovie = useUpdateMovie()
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState<MovieItem | undefined>()
 
@@ -97,7 +98,7 @@ export default function HomePage() {
       )}
 
       <MovieForm open={showForm} onClose={()=>{setShowForm(false);setEditingItem(undefined)}}
-        onSubmit={(data)=>{if(editingItem){}else{createMovie.mutate(data)};setShowForm(false);setEditingItem(undefined)}} initialData={editingItem}/>
+        onSubmit={(data)=>{if(editingItem){updateMovie.mutate({id:editingItem.id,...data})}else{createMovie.mutate(data)};setShowForm(false);setEditingItem(undefined)}} initialData={editingItem}/>
     </div>
   )
 }

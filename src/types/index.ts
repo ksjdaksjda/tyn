@@ -42,6 +42,8 @@ export interface PlaySource {
   name: string
   url: string
   episodes?: Episode[]
+  // Timestamp (ms) when the source was fetched — used for freshness checks
+  fetchedAt?: number
 }
 
 export interface Episode {

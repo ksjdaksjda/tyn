@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMovies, useUpdateStatus, useDeleteMovie } from '@/hooks/useMovies'
+import { useMovies, useUpdateStatus, useDeleteMovie, useUpdateMovie } from '@/hooks/useMovies'
 import MovieGrid from '@/components/movie/MovieGrid'
 import MovieDetail from '@/components/movie/MovieDetail'
 import MovieForm from '@/components/movie/MovieForm'
@@ -16,6 +16,7 @@ export default function ShelfPage() {
   const { data, isLoading } = useMovies({ type: typeParam })
   const updateStatus = useUpdateStatus()
   const deleteMovie = useDeleteMovie()
+  const updateMovie = useUpdateMovie()
 
   const items = data?.items || []
 
@@ -45,6 +46,7 @@ export default function ShelfPage() {
         open={showForm}
         onClose={() => { setShowForm(false); setEditingItem(undefined) }}
         onSubmit={(data) => {
+          if (editingItem) updateMovie.mutate({ id: editingItem.id, ...data })
           setShowForm(false)
           setEditingItem(undefined)
         }}
