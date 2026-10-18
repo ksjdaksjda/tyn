@@ -56,10 +56,22 @@ export default function VideoPlayer({ src, episodes, title, poster, activeEp = 0
         video.currentTime = initialTime
       }
 
+      // Load watchdog: if neither ready nor error arrives within 25s (hung
+      // upstream, dead CDN), give up and let the parent switch source.
+      // Native <video> has NO timeout of its own — without this, loading spins forever.
+      const watchdog = setTimeout(() => {
+        if (!destroyed) {
+          setError('加载超时，片源可能已失效')
+          setLoading(false)
+          if (hls) { hls.destroy(); hls = null }
+          onError?.()
+        }
+      }, 25000)
+
       if (isM3u8 && Hls.isSupported()) {
         /* hls mode */
         hls = new Hls({
-          enableWorker: true,
+          enableWorker: false,
           maxBufferLength: 120,
           maxMaxBufferLength: 180,
           backBufferLength: 60,
@@ -73,6 +85,7 @@ export default function VideoPlayer({ src, episodes, title, poster, activeEp = 0
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           if (!destroyed) {
+            clearTimeout(watchdog)
             setLoading(false)
             // Collect quality levels (dedupe by height)
             const seen = new Map<number, number>()
@@ -88,12 +101,20 @@ export default function VideoPlayer({ src, episodes, title, poster, activeEp = 0
 
         hls.on(Hls.Events.ERROR, (_ev, data) => {
           if (!destroyed && data.fatal) {
-            setError('HLS加载失败，尝试切换线路...')
+            clearTimeout(watchdog)
             if (hls) { hls.destroy(); hls = null }
-            // Fallback: try native
-            video.src = src
-            video.load()
-            video.play().catch(() => {})
+            setError('HLS加载失败')
+            setLoading(false)
+            // Native fallback ONLY on Safari (native HLS support). Retrying the
+            // same dead URL on Chrome/Firefox hangs the <video> element forever.
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+            if (isSafari) {
+              video.src = src
+              video.load()
+              video.play().catch(() => {})
+            } else {
+              onError?.()
+            }
           }
         })
       } else {
@@ -104,6 +125,7 @@ export default function VideoPlayer({ src, episodes, title, poster, activeEp = 0
 
       const onReady = () => {
         if (!destroyed) {
+          clearTimeout(watchdog)
           setLoading(false)
           setError('') // 直连播放成功时清除错误提示，避免遮挡画面
           applyInitialTime()
@@ -111,6 +133,7 @@ export default function VideoPlayer({ src, episodes, title, poster, activeEp = 0
       }
       const onErr = () => {
         if (!destroyed) {
+          clearTimeout(watchdog)
           setError('播放失败')
           setLoading(false)
           onError?.()
@@ -123,6 +146,7 @@ export default function VideoPlayer({ src, episodes, title, poster, activeEp = 0
 
       return () => {
         destroyed = true
+        clearTimeout(watchdog)
         video.removeEventListener('loadedmetadata', onReady)
         video.removeEventListener('canplay', onReady)
         video.removeEventListener('error', onErr)

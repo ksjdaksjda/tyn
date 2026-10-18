@@ -42,7 +42,7 @@ function isNativeHlsPlatform(): boolean {
 export default function PlayerPage() {
   const { itemId } = useParams<{ itemId: string }>()
   const navigate = useNavigate()
-  const { data: item } = useMovie(itemId)
+  const { data: item, isLoading } = useMovie(itemId)
   const refetchSources = useRefetchSources()
   const [mode, setMode] = useState<'loading' | 'proxy' | 'direct' | 'error'>('loading')
   const [currentSrc, setCurrentSrc] = useState('')
@@ -91,7 +91,13 @@ export default function PlayerPage() {
 
   // Initialize from item: restore episode + position, sort sources by clarity
   useEffect(() => {
-    if (!item) return
+    if (isLoading) return
+    if (!item) {
+      // Never leave the page stuck on "loading" — surface a clear error instead
+      setMode('error')
+      setErrorMsg('影片数据不存在，可能已被删除。请返回列表重新打开。')
+      return
+    }
     setMode('loading')
     setErrorMsg('')
     failedTriesRef.current = 0
@@ -134,7 +140,7 @@ export default function PlayerPage() {
         refetchSources.mutate(item, { onError: () => {} })
       }, 1500)
     }
-  }, [item])
+  }, [item, isLoading])
 
   const currentEpisodes = sources.length > 0 ? getEpisodes(sources[Math.min(sourceIdx, sources.length - 1)]) : []
 
