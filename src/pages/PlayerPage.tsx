@@ -6,6 +6,7 @@ import { useRefetchSources } from '@/hooks/useImport'
 import VideoPlayer from '@/components/player/VideoPlayer'
 import { itemsApi } from '@/lib/api'
 import { sortSources } from '@/lib/utils'
+import { resolveProxyBase, proxyUrl } from '@/lib/proxy'
 import type { Episode, PlaySource } from '@/types'
 
 const SOURCE_STALE_MS = 7 * 24 * 3600 * 1000 // 7 days
@@ -28,10 +29,6 @@ function getEpisodes(source: PlaySource): Episode[] {
   return []
 }
 
-function proxyUrl(rawUrl: string) {
-  return `/api/proxy/m3u8?url=${encodeURIComponent(rawUrl)}`
-}
-
 // Direct mode only works on Safari (native HLS, no CORS requirement).
 // Desktop Chrome/Firefox have no native m3u8 support — direct is a guaranteed dead end there.
 function isNativeHlsPlatform(): boolean {
@@ -51,12 +48,14 @@ export default function PlayerPage() {
   const [activeEpIdx, setActiveEpIdx] = useState(0)
   const [pendingSeekTime, setPendingSeekTime] = useState(0)
   const [errorMsg, setErrorMsg] = useState('')
+  const [proxyLabel, setProxyLabel] = useState('云端代理')
 
   const lastTimeRef = useRef(0)
   const activeEpIdxRef = useRef(0)
   const sourceIdxRef = useRef(0)
   const failedTriesRef = useRef(0)
   const autoRefetchRef = useRef(false)
+  const proxyBaseRef = useRef('')
   activeEpIdxRef.current = activeEpIdx
   sourceIdxRef.current = sourceIdx
 
@@ -89,57 +88,68 @@ export default function PlayerPage() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [itemId])
 
-  // Initialize from item: restore episode + position, sort sources by clarity
+  // Initialize from item: resolve proxy base, restore episode + position, sort sources
   useEffect(() => {
-    if (isLoading) return
-    if (!item) {
-      // Never leave the page stuck on "loading" — surface a clear error instead
-      setMode('error')
-      setErrorMsg('影片数据不存在，可能已被删除。请返回列表重新打开。')
-      return
-    }
-    setMode('loading')
-    setErrorMsg('')
-    failedTriesRef.current = 0
+    let cancelled = false
+    const init = async () => {
+      if (isLoading) return
+      if (!item) {
+        // Never leave the page stuck on "loading" — surface a clear error instead
+        setMode('error')
+        setErrorMsg('影片数据不存在，可能已被删除。请返回列表重新打开。')
+        return
+      }
+      setMode('loading')
+      setErrorMsg('')
+      failedTriesRef.current = 0
 
-    const playUrls = parsePlayUrls(item.playUrls)
-    if (playUrls.length === 0) {
-      setMode('error')
-      setErrorMsg('没有播放源。请先去「搜索导入」添加播放源。')
-      return
-    }
+      const playUrls = parsePlayUrls(item.playUrls)
+      if (playUrls.length === 0) {
+        setMode('error')
+        setErrorMsg('没有播放源。请先去「搜索导入」添加播放源。')
+        return
+      }
 
-    const validSources = playUrls.filter((s: any) => s && (s.episodes?.length > 0 || s.url))
-    if (validSources.length === 0) {
-      setMode('error')
-      setErrorMsg('播放源数据格式错误')
-      return
-    }
+      const validSources = playUrls.filter((s: any) => s && (s.episodes?.length > 0 || s.url))
+      if (validSources.length === 0) {
+        setMode('error')
+        setErrorMsg('播放源数据格式错误')
+        return
+      }
 
-    const sorted = sortSources(validSources)
-    setSources(sorted)
-    setSourceIdx(0)
-    const episodes = getEpisodes(sorted[0])
-    const savedEp = item.currentEpisode || 1
-    const epIdx = Math.max(0, Math.min(savedEp - 1, episodes.length - 1))
-    setActiveEpIdx(epIdx)
-    setPendingSeekTime(item.playbackPosition || 0)
-    setCurrentSrc(proxyUrl(episodes[epIdx].url))
-    setMode('proxy')
+      // Resolve which proxy to use: local proxy (home IP, not blocked) or Cloudflare
+      const base = await resolveProxyBase()
+      if (cancelled) return
+      proxyBaseRef.current = base
+      setProxyLabel(base ? '本地代理' : '云端代理')
 
-    // B2 freshness check: only when at least one source carries fetchedAt and
-    // the oldest one is older than 7 days → refresh in background (doesn't block
-    // playback). Legacy data without fetchedAt is never auto-refreshed.
-    const now = Date.now()
-    const hasFetchedAt = sorted.some((s: any) => typeof s.fetchedAt === 'number')
-    const oldest = sorted.reduce((min, s: any) =>
-      typeof s.fetchedAt === 'number' ? Math.min(min, s.fetchedAt) : min, Infinity)
-    if (hasFetchedAt && oldest < now - SOURCE_STALE_MS && !autoRefetchRef.current) {
-      autoRefetchRef.current = true
-      setTimeout(() => {
-        refetchSources.mutate(item, { onError: () => {} })
-      }, 1500)
+      const sorted = sortSources(validSources)
+      setSources(sorted)
+      setSourceIdx(0)
+      const episodes = getEpisodes(sorted[0])
+      const savedEp = item.currentEpisode || 1
+      const epIdx = Math.max(0, Math.min(savedEp - 1, episodes.length - 1))
+      setActiveEpIdx(epIdx)
+      setPendingSeekTime(item.playbackPosition || 0)
+      setCurrentSrc(proxyUrl(episodes[epIdx].url, base))
+      setMode('proxy')
+
+      // B2 freshness check: only when at least one source carries fetchedAt and
+      // the oldest one is older than 7 days → refresh in background (doesn't block
+      // playback). Legacy data without fetchedAt is never auto-refreshed.
+      const now = Date.now()
+      const hasFetchedAt = sorted.some((s: any) => typeof s.fetchedAt === 'number')
+      const oldest = sorted.reduce((min, s: any) =>
+        typeof s.fetchedAt === 'number' ? Math.min(min, s.fetchedAt) : min, Infinity)
+      if (hasFetchedAt && oldest < now - SOURCE_STALE_MS && !autoRefetchRef.current) {
+        autoRefetchRef.current = true
+        setTimeout(() => {
+          refetchSources.mutate(item, { onError: () => {} })
+        }, 1500)
+      }
     }
+    init()
+    return () => { cancelled = true }
   }, [item, isLoading])
 
   const currentEpisodes = sources.length > 0 ? getEpisodes(sources[Math.min(sourceIdx, sources.length - 1)]) : []
@@ -152,7 +162,7 @@ export default function PlayerPage() {
     setPendingSeekTime(lastTimeRef.current)
     setActiveEpIdx(epIdx)
     setSourceIdx(idx)
-    setCurrentSrc(newMode === 'direct' ? eps[epIdx].url : proxyUrl(eps[epIdx].url))
+    setCurrentSrc(newMode === 'direct' ? eps[epIdx].url : proxyUrl(eps[epIdx].url, proxyBaseRef.current))
     setMode(newMode)
   }
 
@@ -201,7 +211,7 @@ export default function PlayerPage() {
     if (mode === 'direct') {
       setCurrentSrc(ep.url)
     } else {
-      setCurrentSrc(proxyUrl(ep.url))
+      setCurrentSrc(proxyUrl(ep.url, proxyBaseRef.current))
     }
     itemsApi.update(itemId || '', { currentEpisode: idx + 1, playbackPosition: 0 })
   }
@@ -229,7 +239,7 @@ export default function PlayerPage() {
     const eps = currentEpisodes
     const next = activeEpIdxRef.current + 1
     if (eps.length > 0 && next < eps.length) {
-      const nextUrl = proxyUrl(eps[next].url)
+      const nextUrl = proxyUrl(eps[next].url, proxyBaseRef.current)
       if (preloadedRef.current !== nextUrl) {
         preloadedRef.current = nextUrl
         fetch(nextUrl).catch(() => {})
@@ -254,6 +264,12 @@ export default function PlayerPage() {
         <div className="text-center p-12" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16 }}>
           <p className="text-lg" style={{ color: 'var(--text)' }}>🎬 {item?.title || '未知影片'}</p>
           <p className="text-sm mt-2" style={{ color: 'var(--danger)' }}>{errorMsg}</p>
+          {!proxyBaseRef.current && (
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+              💡 电脑观看提示：片源站封锁了云端代理，可在电脑上运行
+              <code className="mx-1">node proxy-server.mjs</code>（走家庭宽带）后刷新本页重试
+            </p>
+          )}
           <div className="flex gap-2 justify-center mt-4">
             <button
               onClick={() => refetchSources.mutate(item, { onError: (err: any) => alert(err?.message || '更新片源失败') })}
@@ -294,6 +310,7 @@ export default function PlayerPage() {
       />
       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
         <span>模式: {mode === 'proxy' ? '代理加速' : '直连'}</span>
+        <span>出口: {proxyLabel}</span>
         {mode === 'proxy' && isNativeHlsPlatform() && (
           <button onClick={switchToDirect} className="underline hover:text-[var(--accent)]">切换直连</button>
         )}
